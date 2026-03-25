@@ -1,1 +1,1120 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lunar Lander: Advanced Operations</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bungee&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --hawk-navy: #002244;
+            --hawk-green: #69BE28;
+            --hawk-gray: #A5ACAF;
+            --alert: #ff3333;
+            --warn: #ffcc00;
+            --bg: #050508;
+            --panel: rgba(0, 34, 68, 0.7);
+        }
+        * { box-sizing: border-box; user-select: none; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg); overflow: hidden; font-family: 'Share Tech Mono', monospace; color: var(--hawk-green); }
+        canvas { display: block; width: 100%; height: 100%; z-index: 1; position: absolute; top: 0; left: 0; }
+        
+        /* UI LAYERS */
+        #ui-layer { position: absolute; inset: 0; z-index: 10; pointer-events: none; display: flex; flex-direction: column; }
+        .screen { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.95) 100%); backdrop-filter: blur(4px); pointer-events: auto; }
+        .active-screen { display: flex; }
+        
+        /* CRT EFFECT */
+        .crt::before { content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); z-index: 2; background-size: 100% 2px, 3px 100%; pointer-events: none; }
+        
+        /* BOOT SEQUENCE */
+        #boot-screen { background: #000; justify-content: flex-start; align-items: flex-start; padding: 40px; font-size: 18px; text-shadow: 0 0 5px var(--hawk-green); }
+        .boot-line { margin: 5px 0; opacity: 0; animation: typeIn 0.1s forwards; }
+        @keyframes typeIn { to { opacity: 1; } }
+
+        /* PANELS & MENUS */
+        .panel { background: var(--panel); border: 2px solid var(--hawk-green); border-radius: 8px; padding: 30px; box-shadow: 0 0 30px rgba(105, 190, 40, 0.2); width: 800px; max-width: 95vw; max-height: 90vh; overflow-y: auto; text-align: center; position: relative; }
+        .panel::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--hawk-green); }
+        
+        h1 { font-family: 'Bungee', cursive; font-size: 48px; margin: 0 0 10px 0; color: white; text-shadow: 3px 3px 0 var(--hawk-navy), -1px -1px 0 var(--hawk-green); letter-spacing: 2px; }
+        h2 { font-size: 28px; border-bottom: 1px solid var(--hawk-gray); padding-bottom: 10px; margin-bottom: 20px; color: var(--hawk-gray); }
+        
+        /* BUTTONS */
+        .btn { background: rgba(0,0,0,0.5); border: 1px solid var(--hawk-green); color: var(--hawk-green); font-family: 'Share Tech Mono', monospace; font-size: 20px; padding: 15px 30px; margin: 10px; cursor: pointer; transition: 0.2s; text-transform: uppercase; border-radius: 4px; position: relative; overflow: hidden; }
+        .btn::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(105, 190, 40, 0.4), transparent); transition: 0.3s; }
+        .btn:hover::before { left: 100%; }
+        .btn:hover { background: var(--hawk-green); color: black; box-shadow: 0 0 15px var(--hawk-green); }
+        .btn-alert { border-color: var(--alert); color: var(--alert); }
+        .btn-alert:hover { background: var(--alert); color: white; box-shadow: 0 0 15px var(--alert); }
+        
+        /* HUD */
+        #hud-top { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; }
+        .hud-box { background: rgba(0, 34, 68, 0.8); border: 1px solid var(--hawk-green); padding: 15px; border-radius: 4px; min-width: 250px; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        .hud-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 18px; }
+        .hud-val { color: white; font-weight: bold; }
+        .hud-err { color: var(--alert) !important; animation: blink 0.5s infinite; }
+        .hud-warn { color: var(--warn) !important; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+
+        /* FUEL & INTEGRITY BARS */
+        .bar-container { width: 100%; height: 12px; background: #111; border: 1px solid #444; margin-top: 5px; position: relative; }
+        .bar-fill { height: 100%; background: var(--hawk-green); transition: width 0.1s; }
+        #fuel-bar { background: var(--warn); }
+        #hull-bar { background: var(--hawk-green); }
+        
+        /* SHOP GRID */
+        .shop-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; text-align: left; margin-top: 20px; }
+        .shop-item { background: rgba(0,0,0,0.6); border: 1px solid #333; padding: 15px; border-radius: 4px; transition: 0.2s; position: relative; }
+        .shop-item:hover { border-color: var(--hawk-gray); transform: translateY(-2px); }
+        .shop-item h3 { margin: 0 0 5px 0; color: white; font-size: 18px; }
+        .shop-item p { margin: 0 0 15px 0; font-size: 12px; color: #aaa; min-height: 34px; }
+        .tier-display { display: flex; gap: 3px; margin-bottom: 10px; }
+        .tier-pip { flex: 1; height: 6px; background: #222; }
+        .tier-pip.filled { background: var(--hawk-green); box-shadow: 0 0 5px var(--hawk-green); }
+        .tier-pip.max { background: var(--warn); }
+        .buy-btn { width: 100%; background: #111; border: 1px solid var(--hawk-gray); color: white; padding: 10px; cursor: pointer; transition: 0.2s; font-family: 'Share Tech Mono'; }
+        .buy-btn:hover:not(:disabled) { background: var(--hawk-green); color: black; }
+        .buy-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        /* MOBILE CONTROLS */
+        #mobile-rig { display: none; position: absolute; bottom: 30px; left: 0; width: 100%; padding: 0 40px; justify-content: space-between; pointer-events: none; }
+        .d-pad { display: flex; gap: 15px; }
+        .m-btn { width: 80px; height: 80px; border-radius: 50%; background: rgba(0, 34, 68, 0.5); border: 2px solid var(--hawk-gray); color: white; font-size: 30px; display: flex; align-items: center; justify-content: center; pointer-events: auto; touch-action: none; user-select: none; }
+        .m-btn:active { background: var(--hawk-green); color: black; border-color: white; transform: scale(0.95); }
+        #btn-thrust { width: 100px; height: 100px; border-color: var(--warn); color: var(--warn); }
+        #btn-thrust:active { background: var(--warn); color: black; }
+        @media (pointer: coarse) { #mobile-rig { display: flex; } }
+
+        /* MINI MAP */
+        #minimap { position: absolute; bottom: 20px; right: 20px; width: 250px; height: 150px; background: rgba(0,0,0,0.8); border: 1px solid var(--hawk-green); pointer-events: none; }
+        
+        /* LOGS */
+        #flight-log { position: absolute; bottom: 20px; left: 20px; width: 300px; height: 120px; background: transparent; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; font-size: 14px; text-shadow: 1px 1px 0 #000; pointer-events: none; }
+        .log-entry { margin-top: 4px; animation: fadeOut 8s forwards; }
+        @keyframes fadeOut { 0% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+    </style>
+</head>
+<body class="crt">
+
+<div id="ui-layer">
+    <div id="hud-top" style="display: none;">
+        <div class="hud-box">
+            <div class="hud-row"><span>ALTITUDE:</span> <span id="h-alt" class="hud-val">0.0 m</span></div>
+            <div class="hud-row"><span>H-SPEED:</span> <span id="h-vx" class="hud-val">0.0 m/s</span></div>
+            <div class="hud-row"><span>V-SPEED:</span> <span id="h-vy" class="hud-val">0.0 m/s</span></div>
+            <div class="hud-row"><span>PITCH:</span> <span id="h-pitch" class="hud-val">0.0°</span></div>
+            <div style="margin-top: 15px; font-size: 14px;">PROPELLANT</div>
+            <div class="bar-container"><div id="fuel-bar" class="bar-fill"></div></div>
+            <div style="margin-top: 10px; font-size: 14px;">STRUCTURAL INTEGRITY</div>
+            <div class="bar-container"><div id="hull-bar" class="bar-fill"></div></div>
+        </div>
+        
+        <div class="hud-box" style="text-align: right; min-width: 200px;">
+            <div class="hud-row" style="justify-content: flex-end; gap: 10px;"><span style="color:var(--hawk-gray)">PILOT:</span> <span class="hud-val">JAAP</span></div>
+            <div class="hud-row" style="justify-content: flex-end; gap: 10px;"><span style="color:var(--hawk-gray)">FUNDS:</span> <span id="h-cred" class="hud-val" style="color:var(--warn)">0 CR</span></div>
+            <div class="hud-row" style="justify-content: flex-end; gap: 10px;"><span style="color:var(--hawk-gray)">SECTOR:</span> <span id="h-sec" class="hud-val">BERKELEY-1</span></div>
+            <div class="hud-row" style="justify-content: flex-end; gap: 10px; margin-top: 15px;"><span id="h-status" style="color:var(--hawk-green); font-weight:bold;">NOMINAL</span></div>
+        </div>
+    </div>
+
+    <div id="flight-log"></div>
+    <canvas id="minimap" style="display: none;"></canvas>
+
+    <div id="mobile-rig">
+        <div class="d-pad">
+            <div id="btn-left" class="m-btn">↶</div>
+            <div id="btn-right" class="m-btn">↷</div>
+        </div>
+        <div id="btn-thrust" class="m-btn">🔥</div>
+    </div>
+
+    <div id="boot-screen" class="screen active-screen">
+        <div id="boot-text" style="width: 100%; max-width: 800px;"></div>
+    </div>
+
+    <div id="menu-screen" class="screen">
+        <div class="panel">
+            <h1>LUNAR LANDER</h1>
+            <p style="color: var(--hawk-gray); letter-spacing: 5px; margin-bottom: 30px;">BERKELEY COMMAND CENTER</p>
+            <button class="btn" onclick="startMission()">COMMENCE LAUNCH</button>
+            <button class="btn" onclick="showScreen('shop-screen'); renderShop();">HANGAR / UPGRADES</button>
+            <button class="btn" onclick="showScreen('mission-screen')">MISSION LOG</button>
+            <button class="btn btn-alert" style="font-size: 14px; margin-top: 40px;" onclick="wipeData()">FORMAT OS</button>
+        </div>
+    </div>
+
+    <div id="shop-screen" class="screen">
+        <div class="panel" style="width: 1000px;">
+            <h2>HANGAR ENGINEERING</h2>
+            <div style="font-size: 24px; color: var(--warn); margin-bottom: 10px;">AVAILABLE FUNDS: <span id="shop-bal">0</span> CR</div>
+            <div class="shop-grid" id="shop-grid"></div>
+            <button class="btn" style="margin-top: 30px;" onclick="showScreen('menu-screen')">RETURN TO COMMAND</button>
+        </div>
+    </div>
+
+    <div id="mission-screen" class="screen">
+        <div class="panel">
+            <h2>MISSION ARCHIVE</h2>
+            <div id="mission-list" style="text-align: left; margin: 20px 0; max-height: 400px; overflow-y: auto;"></div>
+            <button class="btn" onclick="showScreen('menu-screen')">BACK</button>
+        </div>
+    </div>
+
+    <div id="fail-screen" class="screen">
+        <div class="panel" style="border-color: var(--alert); box-shadow: 0 0 40px rgba(255,51,51,0.3);">
+            <h1 style="color: var(--alert); text-shadow: 2px 2px 0 #500;">CATASTROPHIC FAILURE</h1>
+            <p id="fail-reason" style="font-size: 20px; margin-bottom: 30px;">HULL INTEGRITY COMPROMISED.</p>
+            <button class="btn" onclick="startMission()">RETRY DEPLOYMENT</button>
+            <button class="btn" onclick="showScreen('menu-screen'); document.getElementById('hud-top').style.display='none'; document.getElementById('minimap').style.display='none';">ABORT TO MENU</button>
+        </div>
+    </div>
+
+    <div id="win-screen" class="screen">
+        <div class="panel" style="border-color: var(--warn);">
+            <h1 style="color: var(--warn); text-shadow: 2px 2px 0 #550;">TOUCHDOWN CONFIRMED</h1>
+            <p style="font-size: 20px; color: var(--hawk-gray);">CARGO SECURED.</p>
+            <div style="margin: 30px 0; font-size: 24px;">
+                <div style="display:flex; justify-content: space-between; max-width: 400px; margin: 0 auto;"><span>BASE PAYOUT:</span> <span id="win-base">0 CR</span></div>
+                <div style="display:flex; justify-content: space-between; max-width: 400px; margin: 5px auto;"><span>HULL BONUS:</span> <span id="win-hull" style="color:var(--hawk-green)">0 CR</span></div>
+                <div style="display:flex; justify-content: space-between; max-width: 400px; margin: 5px auto;"><span>FUEL BONUS:</span> <span id="win-fuel" style="color:var(--warn)">0 CR</span></div>
+                <div style="display:flex; justify-content: space-between; max-width: 400px; margin: 15px auto; border-top: 1px solid #555; padding-top: 10px; font-weight: bold;"><span>TOTAL:</span> <span id="win-total" style="color:white">0 CR</span></div>
+            </div>
+            <button class="btn" onclick="advanceSector()">NEXT SECTOR</button>
+            <button class="btn" onclick="showScreen('shop-screen'); renderShop(); document.getElementById('hud-top').style.display='none'; document.getElementById('minimap').style.display='none';">UPGRADE SHIP</button>
+        </div>
+    </div>
+    
+    <div id="pause-screen" class="screen" style="background: rgba(0,0,0,0.8);">
+        <h1 style="font-size: 80px; letter-spacing: 10px;">SYSTEM PAUSED</h1>
+        <button class="btn" onclick="togglePause()">RESUME TELEMETRY</button>
+        <button class="btn btn-alert" onclick="showScreen('menu-screen'); game.active = false; document.getElementById('hud-top').style.display='none'; document.getElementById('minimap').style.display='none';">ABORT MISSION</button>
+    </div>
+</div>
+
+<script>
+/**
+ * LUNAR LANDER: ADVANCED OPERATIONS
+ * C++ Style Architecture Ported to JS
+ * Pilot: Jaap | Location: Berkeley, CA
+ */
+
+// ============================================================================
+// CORE MATH & PHYSICS LIBRARY
+// ============================================================================
+class Vec2 {
+    constructor(x=0, y=0) { this.x = x; this.y = y; }
+    add(v) { this.x += v.x; this.y += v.y; return this; }
+    sub(v) { this.x -= v.x; this.y -= v.y; return this; }
+    mult(n) { this.x *= n; this.y *= n; return this; }
+    div(n) { this.x /= n; this.y /= n; return this; }
+    magSq() { return this.x*this.x + this.y*this.y; }
+    mag() { return Math.sqrt(this.magSq()); }
+    norm() { let m = this.mag(); if(m>0) this.div(m); return this; }
+    copy() { return new Vec2(this.x, this.y); }
+    dot(v) { return this.x*v.x + this.y*v.y; }
+    cross(v) { return this.x*v.y - this.y*v.x; }
+    rot(a) { let c=Math.cos(a), s=Math.sin(a), nx=this.x*c-this.y*s, ny=this.x*s+this.y*c; this.x=nx; this.y=ny; return this; }
+    dist(v) { return Math.sqrt((this.x-v.x)**2 + (this.y-v.y)**2); }
+}
+
+const MathUtils = {
+    clamp: (v, min, max) => Math.max(min, Math.min(max, v)),
+    lerp: (a, b, t) => a + (b - a) * t,
+    rand: (min, max) => Math.random() * (max - min) + min,
+    randInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min
+};
+
+// ============================================================================
+// AUDIO SYNTHESIS ENGINE (Web Audio API)
+// ============================================================================
+const AudioSys = (() => {
+    let ctx = null;
+    let master = null;
+    let initialized = false;
+
+    const init = () => {
+        if (initialized) return;
+        window.AudioContext = window.AudioContext || window.webkitAudioContext;
+        ctx = new AudioContext();
+        master = ctx.createGain();
+        master.gain.value = 0.5;
+        master.connect(ctx.destination);
+        initialized = true;
+    };
+
+    const playTone = (freq, type, dur, vol, slideFreq=null, noise=false) => {
+        if (!initialized || ctx.state === 'suspended') return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        
+        if (noise) {
+            const bufferSize = ctx.sampleRate * dur;
+            const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            const noiseSrc = ctx.createBufferSource();
+            noiseSrc.buffer = buffer;
+            // Simple lowpass filter for noise
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = freq;
+            noiseSrc.connect(filter);
+            filter.connect(gain);
+            noiseSrc.start();
+            noiseSrc.stop(ctx.currentTime + dur);
+        } else {
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, ctx.currentTime);
+            if(slideFreq) osc.frequency.exponentialRampToValueAtTime(slideFreq, ctx.currentTime + dur);
+            osc.connect(gain);
+            osc.start();
+            osc.stop(ctx.currentTime + dur);
+        }
+
+        gain.gain.setValueAtTime(vol, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + dur);
+        gain.connect(master);
+    };
+
+    let thrustOsc = null, thrustGain = null;
+
+    return {
+        init,
+        resume: () => { if(ctx && ctx.state === 'suspended') ctx.resume(); },
+        startThrust: () => {
+            if(!initialized || thrustOsc) return;
+            thrustOsc = ctx.createOscillator(); thrustOsc.type = 'square'; thrustOsc.frequency.value = 50;
+            thrustGain = ctx.createGain(); thrustGain.gain.value = 0;
+            thrustOsc.connect(thrustGain); thrustGain.connect(master);
+            thrustOsc.start();
+            thrustGain.gain.setTargetAtTime(0.15, ctx.currentTime, 0.1);
+            
+            // Sub noise
+            playTone(200, 'noise', 0.1, 0.1, null, true);
+        },
+        stopThrust: () => {
+            if(!thrustOsc) return;
+            thrustGain.gain.setTargetAtTime(0, ctx.currentTime, 0.1);
+            setTimeout(() => { if(thrustOsc){ thrustOsc.stop(); thrustOsc.disconnect(); thrustOsc = null; } }, 200);
+        },
+        rcs: () => { if(Math.random()<0.3) playTone(800, 'noise', 0.05, 0.05, null, true); },
+        crash: () => { playTone(100, 'sawtooth', 0.8, 0.4, 20); playTone(50, 'square', 1.0, 0.5, 10); playTone(1000, 'noise', 0.8, 0.3, null, true); },
+        warn: () => playTone(600, 'square', 0.2, 0.1, 400),
+        land: () => { playTone(150, 'sine', 0.5, 0.2, 50); playTone(300, 'sine', 0.5, 0.1, 100); },
+        win: () => { playTone(440, 'square', 0.1, 0.1); setTimeout(()=>playTone(554, 'square', 0.1, 0.1), 100); setTimeout(()=>playTone(659, 'square', 0.4, 0.15), 200); },
+        click: () => playTone(800, 'sine', 0.05, 0.1),
+        buy: () => playTone(1200, 'sine', 0.2, 0.1, 2000)
+    };
+})();
+
+document.addEventListener('click', AudioSys.init, {once:true});
+document.addEventListener('touchstart', AudioSys.init, {once:true});
+
+// ============================================================================
+// DATA & PERSISTENCE
+// ============================================================================
+const DEFAULT_SAVE = {
+    credits: 500,
+    sector: 1,
+    stats: { flights: 0, crashes: 0, succ: 0, totalCr: 0 },
+    upg: {
+        thrust: 0, rcs: 0, fuel: 0, hull: 0,
+        radar: 0, shocks: 0, magnet: 0, eff: 0
+    }
+};
+
+let SaveData = JSON.parse(localStorage.getItem('lander_jaap_save')) || JSON.parse(JSON.stringify(DEFAULT_SAVE));
+
+const saveGame = () => localStorage.setItem('lander_jaap_save', JSON.stringify(SaveData));
+const wipeData = () => { if(confirm("SECURE ERASE ALL DATA?")) { localStorage.removeItem('lander_jaap_save'); location.reload(); } };
+
+// ============================================================================
+// SHOP DEFS (Upgrades)
+// ============================================================================
+const SHOP = {
+    thrust: { n: "Main Engine (C++)", d: "Increases upward acceleration vector.", max: 5, b: 200, m: 1.5, f: t => 0.08 + (t*0.02) },
+    rcs: { n: "RCS Manifolds", d: "Increases rotational torque speed.", max: 5, b: 150, m: 1.4, f: t => 0.002 + (t*0.0006) },
+    fuel: { n: "Hypergolic Tanks", d: "Expands max propellant capacity.", max: 10, b: 150, m: 1.3, f: t => 1000 + (t*300) },
+    eff: { n: "Injector Efficiency", d: "Reduces fuel consumption rate.", max: 5, b: 400, m: 1.8, f: t => 1.0 - (t*0.1) },
+    hull: { n: "Titanium Chassis", d: "Increases max structural hitpoints.", max: 5, b: 300, m: 1.6, f: t => 100 + (t*50) },
+    shocks: { n: "Hydraulic Shocks", d: "Increases safe landing velocity limit.", max: 4, b: 500, m: 2.0, f: t => 2.0 + (t*0.8) },
+    magnet: { n: "Cargo Mag-Locks", d: "Holds external cargo tighter during tilt.", max: 3, b: 600, m: 2.0, f: t => 0.5 + (t*0.3) },
+    radar: { n: "Deep Space Radar", d: "Expands camera FOV.", max: 3, b: 800, m: 2.5, f: t => 1.0 - (t*0.15) }
+};
+
+const getUpg = (id) => SHOP[id].f(SaveData.upg[id]);
+const getCost = (id) => { let t = SaveData.upg[id]; return t >= SHOP[id].max ? -1 : Math.floor(SHOP[id].b * Math.pow(SHOP[id].m, t)); };
+
+const renderShop = () => {
+    document.getElementById('shop-bal').innerText = SaveData.credits;
+    const grid = document.getElementById('shop-grid');
+    grid.innerHTML = '';
+    
+    for(let k in SHOP) {
+        let d = SHOP[k], t = SaveData.upg[k], c = getCost(k);
+        let isM = c === -1;
+        let can = !isM && SaveData.credits >= c;
+        
+        let pips = '';
+        for(let i=0; i<d.max; i++) pips += `<div class="tier-pip ${i<t?'filled':''} ${i<t&&isM?'max':''}"></div>`;
+        
+        grid.innerHTML += `
+            <div class="shop-item">
+                <h3>${d.n}</h3>
+                <div class="tier-display">${pips}</div>
+                <p>${d.d}</p>
+                <button class="buy-btn" ${!can?'disabled':''} onclick="buyItem('${k}')">${isM ? 'MAXED' : 'INSTALL - ' + c + ' CR'}</button>
+            </div>
+        `;
+    }
+};
+
+const buyItem = (id) => {
+    let c = getCost(id);
+    if(c > -1 && SaveData.credits >= c) {
+        SaveData.credits -= c;
+        SaveData.upg[id]++;
+        saveGame();
+        AudioSys.buy();
+        renderShop();
+        logEvent(`UPGRADED: ${SHOP[id].n}`);
+    }
+};
+
+// ============================================================================
+// GAME GLOBALS & INPUT
+// ============================================================================
+const cvs = document.createElement('canvas');
+document.body.appendChild(cvs);
+const ctx = cvs.getContext('2d', { alpha: false });
+let W, H;
+const resize = () => { W = cvs.width = window.innerWidth; H = cvs.height = window.innerHeight; };
+window.addEventListener('resize', resize);
+resize();
+
+const mCvs = document.getElementById('minimap');
+const mCtx = mCvs.getContext('2d');
+
+const INP = { up: false, left: false, right: false, locked: false };
+const KEYS = { ArrowUp:'up', KeyW:'up', Space:'up', ArrowLeft:'left', KeyA:'left', ArrowRight:'right', KeyD:'right' };
+
+window.addEventListener('keydown', e => {
+    if(KEYS[e.code] && !INP.locked) INP[KEYS[e.code]] = true;
+    if(e.code === 'Escape' && game.active) togglePause();
+});
+window.addEventListener('keyup', e => {
+    if(KEYS[e.code]) INP[KEYS[e.code]] = false;
+});
+
+// Mobile Controls
+const bindTouch = (id, k) => {
+    let el = document.getElementById(id);
+    el.addEventListener('touchstart', e=>{e.preventDefault(); if(!INP.locked) INP[k]=true; AudioSys.resume();});
+    el.addEventListener('touchend', e=>{e.preventDefault(); INP[k]=false;});
+};
+bindTouch('btn-up', 'up'); bindTouch('btn-thrust', 'up'); bindTouch('btn-left', 'left'); bindTouch('btn-right', 'right');
+
+// ============================================================================
+// PARTICLE SYSTEM
+// ============================================================================
+class Particle {
+    constructor(x, y, vx, vy, life, col, size, grav=0) {
+        this.p = new Vec2(x, y); this.v = new Vec2(vx, vy);
+        this.l = life; this.ml = life; this.c = col; this.s = size; this.g = grav;
+    }
+    upd(dt) { this.v.y += this.g*dt; this.p.add(new Vec2(this.v.x*dt, this.v.y*dt)); this.l -= dt; }
+    draw(ctx, cx, cy) {
+        ctx.globalAlpha = Math.max(0, this.l/this.ml);
+        ctx.fillStyle = this.c;
+        ctx.fillRect(this.p.x - cx, this.p.y - cy, this.s, this.s);
+        ctx.globalAlpha = 1;
+    }
+}
+
+let particles = [];
+const spawnFx = (x, y, n, col, sp, life, grav=0, sz=3) => {
+    for(let i=0; i<n; i++) particles.push(new Particle(x, y, MathUtils.rand(-sp,sp), MathUtils.rand(-sp,sp), MathUtils.rand(life*0.5, life*1.5), col, MathUtils.rand(1,sz), grav));
+};
+
+// ============================================================================
+// TERRAIN GENERATION (Midpoint Displacement)
+// ============================================================================
+class Terrain {
+    constructor(width, roughness, seed) {
+        this.w = width; this.pts = []; this.pads = []; this.caves = [];
+        this.generate(roughness, seed);
+    }
+    
+    generate(r, s) {
+        // Simple deterministic random
+        let rseed = s;
+        const rand = () => { rseed = (rseed * 9301 + 49297) % 233280; return rseed / 233280; };
+        
+        let segs = 128; // power of 2
+        let step = this.w / segs;
+        let heights = new Array(segs + 1);
+        heights[0] = 800; heights[segs] = 800;
+        
+        // Midpoint displacement
+        let disp = 600 * r;
+        for(let len = segs; len > 1; len /= 2) {
+            let half = len / 2;
+            for(let i = 0; i < segs; i += len) {
+                let mid = i + half;
+                if(!heights[mid]) heights[mid] = (heights[i] + heights[i+len])/2 + (rand() - 0.5)*disp;
+            }
+            disp *= 0.55;
+        }
+
+        // Apply heights to points
+        for(let i=0; i<=segs; i++) this.pts.push(new Vec2(i*step, heights[i]));
+
+        // Create Landing Pads (Flatten areas)
+        let numPads = 3 + Math.floor(rand()*3);
+        let padW = 200;
+        for(let i=0; i<numPads; i++) {
+            let idx = Math.floor(rand() * (segs - 10)) + 5;
+            let px = this.pts[idx].x;
+            let py = this.pts[idx].y;
+            
+            // Flatten surrounding points
+            for(let j=idx-2; j<=idx+2; j++) {
+                if(this.pts[j]) this.pts[j].y = py;
+            }
+            
+            // Mark pad
+            let isMain = i === numPads-1;
+            this.pads.push({ x: this.pts[idx-2].x, w: this.pts[idx+2].x - this.pts[idx-2].x, y: py, main: isMain });
+        }
+    }
+    
+    draw(ctx, cx, cy) {
+        ctx.beginPath();
+        ctx.moveTo(this.pts[0].x - cx, 3000 - cy);
+        for(let p of this.pts) ctx.lineTo(p.x - cx, p.y - cy);
+        ctx.lineTo(this.pts[this.pts.length-1].x - cx, 3000 - cy);
+        
+        // Fill ground
+        ctx.fillStyle = '#0a0a0c'; ctx.fill();
+        
+        // Stroke surface
+        ctx.strokeStyle = 'var(--hawk-gray)'; ctx.lineWidth = 2; ctx.stroke();
+        
+        // Draw Pads
+        for(let p of this.pads) {
+            ctx.fillStyle = p.main ? 'var(--hawk-green)' : 'var(--warn)';
+            ctx.fillRect(p.x - cx, p.y - cy, p.w, 8);
+            ctx.shadowBlur = 20; ctx.shadowColor = ctx.fillStyle;
+            ctx.fillRect(p.x - cx, p.y - cy, p.w, 8);
+            ctx.shadowBlur = 0;
+            
+            // Pad text
+            ctx.fillStyle = 'black'; ctx.font = '10px Bungee';
+            ctx.fillText(p.main ? "DZ-PRIME" : "LZ-AUX", p.x - cx + 10, p.y - cy + 7);
+        }
+    }
+    
+    // Fast line-segment intersection for collision
+    collide(p1, p2) {
+        for(let i=0; i<this.pts.length-1; i++) {
+            let t1 = this.pts[i], t2 = this.pts[i+1];
+            // Bounding box quick reject
+            if(Math.max(p1.x, p2.x) < Math.min(t1.x, t2.x) || Math.min(p1.x, p2.x) > Math.max(t1.x, t2.x)) continue;
+            
+            // Cross product intersection test
+            let d = (p2.x - p1.x)*(t2.y - t1.y) - (p2.y - p1.y)*(t2.x - t1.x);
+            if(d === 0) continue;
+            let u = ((t1.x - p1.x)*(t2.y - t1.y) - (t1.y - p1.y)*(t2.x - t1.x)) / d;
+            let v = ((t1.x - p1.x)*(p2.y - p1.y) - (t1.y - p1.y)*(p2.x - p1.x)) / d;
+            
+            if(u >= 0 && u <= 1 && v >= 0 && v <= 1) {
+                return { hit: true, pt: new Vec2(p1.x + u*(p2.x-p1.x), p1.y + u*(p2.y-p1.y)), n: new Vec2(t1.y-t2.y, t2.x-t1.x).norm() };
+            }
+        }
+        return { hit: false };
+    }
+}
+
+// ============================================================================
+// SHIP & CARGO ENTITIES
+// ============================================================================
+class Cargo {
+    constructor(x, y, w, h, mass) {
+        this.p = new Vec2(x, y); this.v = new Vec2(0,0);
+        this.w = w; this.h = h; this.m = mass;
+        this.onShip = true; this.hp = 100; this.dead = false;
+        this.a = 0;
+    }
+    upd(dt, ship, grav) {
+        if(this.dead) return;
+        
+        if(this.onShip && !ship.dead) {
+            // Calculate platform local coords
+            let tx = new Vec2(Math.cos(ship.a), Math.sin(ship.a));
+            let ty = new Vec2(-Math.sin(ship.a), Math.cos(ship.a)); // Up normal
+            
+            let platCenter = new Vec2(ship.p.x + ty.x*(-ship.h/2), ship.p.y + ty.y*(-ship.h/2));
+            
+            // Physics sliding logic
+            let gravLoc = grav.dot(tx); 
+            let shipAccel = ship.v.x - this.v.x;
+            let force = gravLoc + shipAccel*0.1;
+            
+            let grip = getUpg('magnet');
+            if(Math.abs(ship.a) > grip + 0.2) force *= 2; // slip faster if high angle
+            
+            let slide = 0;
+            if(Math.abs(force) > grip) slide = force * dt;
+            
+            // Current local offset
+            let diff = new Vec2(this.p.x - platCenter.x, this.p.y - platCenter.y);
+            let locX = diff.dot(tx) + slide;
+            
+            this.p.x = platCenter.x + tx.x*locX + ty.x*(this.h/2);
+            this.p.y = platCenter.y + tx.y*locX + ty.y*(this.h/2);
+            this.v = ship.v.copy();
+            this.a = ship.a;
+            
+            // Fall off bounds
+            if(Math.abs(locX) > ship.w/2 || Math.abs(ship.a) > Math.PI/2) {
+                this.onShip = false; 
+                this.v.x += slide*5;
+                logEvent("WARNING: CARGO DETACHED!"); AudioSys.warn();
+            }
+        } else {
+            // Free fall
+            this.v.add(new Vec2(grav.x*dt, grav.y*dt));
+            this.p.add(new Vec2(this.v.x*dt, this.v.y*dt));
+            this.a += this.v.x * 0.05 * dt;
+            
+            // Terrain Collision
+            let hit = game.env.collide(this.p, new Vec2(this.p.x + this.v.x*dt, this.p.y + this.h/2 + this.v.y*dt));
+            if(hit.hit) {
+                let mag = this.v.mag();
+                if(mag > 2) { 
+                    this.hp -= mag * 20; 
+                    AudioSys.crash(); 
+                    spawnFx(this.p.x, this.p.y, 10, '#FF9800', 5, 20); 
+                    this.v.y *= -0.3; this.v.x *= 0.8;
+                } else {
+                    this.v.mult(0);
+                }
+                this.p.y = hit.pt.y - this.h/2;
+                
+                if(this.hp <= 0 && !this.dead) {
+                    this.dead = true;
+                    spawnFx(this.p.x, this.p.y, 40, '#fff', 8, 40);
+                    AudioSys.crash();
+                    setTimeout(() => triggerGameOver("CARGO DESTROYED"), 1500);
+                }
+            }
+        }
+    }
+    draw(ctx, cx, cy) {
+        if(this.dead) return;
+        ctx.save(); ctx.translate(this.p.x - cx, this.p.y - cy); ctx.rotate(this.a);
+        
+        ctx.fillStyle = '#FF9800'; ctx.fillRect(-this.w/2, -this.h/2, this.w, this.h);
+        ctx.strokeStyle = '#222'; ctx.lineWidth = 2; ctx.strokeRect(-this.w/2, -this.h/2, this.w, this.h);
+        
+        // Hazard stripes
+        ctx.fillStyle = '#222';
+        for(let i=-this.w/2; i<this.w/2; i+=8) {
+            ctx.beginPath(); ctx.moveTo(i, -this.h/2); ctx.lineTo(i+4, -this.h/2); ctx.lineTo(i-4, this.h/2); ctx.lineTo(i-8, this.h/2); ctx.fill();
+        }
+        
+        ctx.fillStyle = (this.hp < 40) ? ((Date.now()%500<250)?'red':'#500') : '#0f0';
+        ctx.fillRect(-4, -4, 8, 8);
+        ctx.restore();
+    }
+}
+
+class Ship {
+    constructor(x, y) {
+        this.p = new Vec2(x, y); this.v = new Vec2(0,0);
+        this.a = 0; this.va = 0;
+        this.w = 40; this.h = 60;
+        
+        this.fMax = getUpg('fuel'); this.f = this.fMax;
+        this.hpMax = getUpg('hull'); this.hp = this.hpMax;
+        
+        this.dead = false; this.landed = false;
+        
+        // Physics constants loaded from upgrades
+        this.thrust = getUpg('thrust');
+        this.rcs = getUpg('rcs');
+        this.eff = getUpg('eff');
+        this.safeV = getUpg('shocks');
+        
+        this.thrusting = false;
+    }
+    
+    upd(dt, grav) {
+        if(this.dead || this.landed) { if(this.thrusting){ AudioSys.stopThrust(); this.thrusting=false;} return; }
+        
+        let usingThrust = false;
+        if(INP.up && this.f > 0) {
+            let dir = new Vec2(0, -this.thrust).rot(this.a);
+            this.v.add(new Vec2(dir.x*dt, dir.y*dt));
+            this.f -= 0.5 * this.eff * dt;
+            usingThrust = true;
+            
+            // Visuals
+            let ex = this.p.x - Math.sin(this.a)*this.h/2;
+            let ey = this.p.y + Math.cos(this.a)*this.h/2;
+            spawnFx(ex, ey, 2, '#ffcc00', 3, 15);
+            spawnFx(ex, ey, 1, '#ff3333', 5, 20);
+        }
+        
+        if(usingThrust && !this.thrusting) { AudioSys.startThrust(); this.thrusting=true; }
+        else if(!usingThrust && this.thrusting) { AudioSys.stopThrust(); this.thrusting=false; }
+        
+        if(INP.left && this.f > 0) { this.va -= this.rcs * dt; this.f -= 0.1 * this.eff * dt; AudioSys.rcs(); spawnFx(this.p.x+Math.cos(this.a)*10, this.p.y+Math.sin(this.a)*10, 1, '#fff', 1, 5); }
+        if(INP.right && this.f > 0) { this.va += this.rcs * dt; this.f -= 0.1 * this.eff * dt; AudioSys.rcs(); spawnFx(this.p.x-Math.cos(this.a)*10, this.p.y-Math.sin(this.a)*10, 1, '#fff', 1, 5); }
+        
+        this.v.add(new Vec2(grav.x*dt, grav.y*dt));
+        this.p.add(new Vec2(this.v.x*dt, this.v.y*dt));
+        
+        this.a += this.va * dt;
+        this.va *= Math.pow(0.95, dt); // air friction rotation
+        
+        // Bounds
+        if(this.p.x < 0) { this.p.x = 0; this.v.x = 0; }
+        if(this.p.x > game.env.w) { this.p.x = game.env.w; this.v.x = 0; }
+        if(this.p.y < -1000) { this.p.y = -1000; this.v.y = 0; }
+
+        // Terrain Collision Logic
+        // We check 3 points: Bottom Center, Left Leg, Right Leg
+        let bottom = new Vec2(this.p.x - Math.sin(this.a)*this.h/2, this.p.y + Math.cos(this.a)*this.h/2);
+        let leftLeg = new Vec2(bottom.x - Math.cos(this.a)*this.w/2, bottom.y - Math.sin(this.a)*this.w/2);
+        let rightLeg = new Vec2(bottom.x + Math.cos(this.a)*this.w/2, bottom.y + Math.sin(this.a)*this.w/2);
+        
+        let hitC = game.env.collide(this.p, bottom);
+        let hitL = game.env.collide(this.p, leftLeg);
+        let hitR = game.env.collide(this.p, rightLeg);
+        
+        if(hitC.hit || hitL.hit || hitR.hit) {
+            let hitPt = hitC.hit ? hitC.pt : (hitL.hit ? hitL.pt : hitR.pt);
+            let speed = this.v.mag();
+            
+            // Check if on pad
+            let onPad = false;
+            let padType = null;
+            for(let p of game.env.pads) {
+                if(this.p.x >= p.x && this.p.x <= p.x + p.w && hitPt.y <= p.y + 5) { onPad = true; padType = p; break; }
+            }
+            
+            // Landing evaluation
+            if(onPad && speed <= this.safeV && Math.abs(this.a) < 0.15 && Math.abs(this.va) < 0.02) {
+                // Successful landing
+                this.landed = true; this.v.mult(0); this.va = 0; this.a = 0;
+                this.p.y = padType.y - this.h/2;
+                AudioSys.land();
+                spawnFx(bottom.x, bottom.y, 20, '#aaa', 2, 40);
+                setTimeout(() => triggerWin(padType.main), 1500);
+            } else {
+                // Crash
+                let dmg = (speed * 15) + (Math.abs(this.a) * 50);
+                this.hp -= dmg;
+                if(this.hp <= 0) {
+                    this.explode();
+                } else {
+                    AudioSys.crash();
+                    this.v.y *= -0.4; this.v.x *= -0.4;
+                    this.va += (Math.random()-0.5)*0.2;
+                    this.p.y -= 2;
+                    logEvent(`IMPACT WARNING: HULL DMG ${Math.floor(dmg)}`);
+                    spawnFx(hitPt.x, hitPt.y, 10, '#fff', 3, 20);
+                }
+            }
+        }
+    }
+    
+    explode() {
+        this.dead = true;
+        this.hp = 0;
+        AudioSys.stopThrust();
+        AudioSys.crash();
+        spawnFx(this.p.x, this.p.y, 150, '#ff3333', 15, 60);
+        spawnFx(this.p.x, this.p.y, 50, '#ffcc00', 8, 40);
+        spawnFx(this.p.x, this.p.y, 30, '#555', 5, 100);
+        logEvent("CRITICAL HULL FAILURE");
+        SaveData.stats.crashes++; saveGame();
+        setTimeout(() => triggerGameOver("HULL INTEGRITY COMPROMISED"), 2000);
+    }
+    
+    draw(ctx, cx, cy) {
+        if(this.dead) return;
+        ctx.save(); ctx.translate(this.p.x - cx, this.p.y - cy); ctx.rotate(this.a);
+        
+        // Thrust Flame
+        if(INP.up && this.f>0) {
+            ctx.fillStyle = 'rgba(255, 204, 0, 0.8)';
+            ctx.beginPath(); ctx.moveTo(-this.w/3, this.h/2); ctx.lineTo(this.w/3, this.h/2);
+            ctx.lineTo(0, this.h/2 + 20 + Math.random()*20); ctx.fill();
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.beginPath(); ctx.moveTo(-this.w/6, this.h/2); ctx.lineTo(this.w/6, this.h/2);
+            ctx.lineTo(0, this.h/2 + 10 + Math.random()*10); ctx.fill();
+        }
+        
+        // Ship Body (Berkeley / Seahawks Theme)
+        ctx.fillStyle = 'var(--hawk-gray)';
+        ctx.beginPath();
+        ctx.moveTo(0, -this.h/2);
+        ctx.lineTo(this.w/2, 0);
+        ctx.lineTo(this.w/2, this.h/2);
+        ctx.lineTo(-this.w/2, this.h/2);
+        ctx.lineTo(-this.w/2, 0);
+        ctx.fill();
+        
+        // Stripes
+        ctx.fillStyle = 'var(--hawk-navy)'; ctx.fillRect(-this.w/2, 0, this.w, 15);
+        ctx.fillStyle = 'var(--hawk-green)'; ctx.fillRect(-this.w/2, 15, this.w, 5);
+        
+        // Window
+        ctx.fillStyle = 'var(--bg)'; ctx.beginPath(); ctx.arc(0, -10, 8, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#0ff'; ctx.beginPath(); ctx.arc(-2, -12, 3, 0, Math.PI*2); ctx.fill();
+        
+        // Legs
+        ctx.strokeStyle = '#888'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(-this.w/2, this.h/2); ctx.lineTo(-this.w/2 - 10, this.h/2 + 10); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(this.w/2, this.h/2); ctx.lineTo(this.w/2 + 10, this.h/2 + 10); ctx.stroke();
+        
+        // Feet
+        ctx.fillStyle = 'var(--hawk-navy)';
+        ctx.fillRect(-this.w/2 - 15, this.h/2 + 10, 10, 4);
+        ctx.fillRect(this.w/2 + 5, this.h/2 + 10, 10, 4);
+        
+        // Top Cargo Pad
+        ctx.fillStyle = '#333'; ctx.fillRect(-this.w/2 + 5, -this.h/2 - 4, this.w - 10, 4);
+        
+        // RCS Thrusters
+        if(INP.left && this.f>0) { ctx.fillStyle='white'; ctx.beginPath(); ctx.arc(this.w/2, -this.h/4, 4, 0, Math.PI*2); ctx.fill(); }
+        if(INP.right && this.f>0) { ctx.fillStyle='white'; ctx.beginPath(); ctx.arc(-this.w/2, -this.h/4, 4, 0, Math.PI*2); ctx.fill(); }
+        
+        ctx.restore();
+    }
+}
+
+// ============================================================================
+// GAME ENGINE & MAIN LOOP
+// ============================================================================
+const game = {
+    active: false,
+    grav: new Vec2(0, 0.02),
+    ship: null, cargo: null, env: null,
+    cam: new Vec2(0,0),
+    stars: [],
+    lastTime: 0
+};
+
+const initLevel = () => {
+    INP.locked = false;
+    INP.up = INP.left = INP.right = false;
+    particles = [];
+    
+    // Generate Environment based on Sector
+    let w = 4000 + (SaveData.sector * 1000);
+    let r = 0.5 + (SaveData.sector * 0.1);
+    game.env = new Terrain(w, r, SaveData.sector * 12345);
+    
+    // Generate Stars
+    game.stars = [];
+    for(let i=0; i<300; i++) game.stars.push({ x: Math.random()*w, y: Math.random()*2000-1000, s: Math.random()*2, a: Math.random() });
+    
+    // Setup Entities
+    game.ship = new Ship(200, 200);
+    game.cargo = new Cargo(200, 160, 24, 24, 10);
+    
+    game.cam.x = game.ship.p.x - W/2;
+    game.cam.y = game.ship.p.y - H/2;
+    
+    document.getElementById('hud-top').style.display = 'flex';
+    document.getElementById('minimap').style.display = 'block';
+    
+    logEvent(`SECTOR ${SaveData.sector} INITIATED.`);
+    logEvent(`SYS: GRAV ${game.grav.y.toFixed(3)} | WINDS: CALM`);
+};
+
+const loop = (time) => {
+    if(!game.active) { game.lastTime = time; requestAnimationFrame(loop); return; }
+    
+    // Delta time clamping (prevent massive jumps if tab inactive)
+    let dt = (time - game.lastTime) / (1000/60);
+    if(dt > 3) dt = 3; 
+    game.lastTime = time;
+    
+    // Physics Updates
+    game.ship.upd(dt, game.grav);
+    game.cargo.upd(dt, game.ship, game.grav);
+    for(let i=particles.length-1; i>=0; i--) { particles[i].upd(dt); if(particles[i].l <= 0) particles.splice(i,1); }
+    
+    // Camera Tracking (Smooth, with Radar zoom)
+    let targetX = game.ship.p.x - W/2;
+    let targetY = game.ship.p.y - H/2;
+    game.cam.x += (targetX - game.cam.x) * 0.1 * dt;
+    game.cam.y += (targetY - game.cam.y) * 0.1 * dt;
+    
+    // Bounds on camera
+    if(game.cam.x < 0) game.cam.x = 0;
+    if(game.cam.x > game.env.w - W) game.cam.x = game.env.w - W;
+    
+    updateHUD();
+    render();
+    renderMinimap();
+    
+    requestAnimationFrame(loop);
+};
+
+const render = () => {
+    ctx.fillStyle = varColor('--bg'); ctx.fillRect(0, 0, W, H);
+    
+    let zm = getUpg('radar');
+    ctx.save();
+    ctx.translate(W/2, H/2); ctx.scale(zm, zm); ctx.translate(-W/2, -H/2);
+    
+    // Stars Parallax
+    ctx.fillStyle = 'white';
+    game.stars.forEach(s => {
+        let sx = s.x - game.cam.x * 0.05;
+        let sy = s.y - game.cam.y * 0.05;
+        // wrap
+        while(sx < -100) sx += game.env.w; while(sx > game.env.w+100) sx -= game.env.w;
+        ctx.globalAlpha = s.a; ctx.fillRect(sx, sy, s.s, s.s);
+    });
+    ctx.globalAlpha = 1;
+    
+    game.env.draw(ctx, game.cam.x, game.cam.y);
+    particles.forEach(p => p.draw(ctx, game.cam.x, game.cam.y));
+    game.cargo.draw(ctx, game.cam.x, game.cam.y);
+    game.ship.draw(ctx, game.cam.x, game.cam.y);
+    
+    // Draw objective marker if off screen
+    for(let p of game.env.pads) {
+        if(p.main) {
+            let dx = p.x - game.ship.p.x, dy = p.y - game.ship.p.y;
+            let dist = Math.sqrt(dx*dx + dy*dy);
+            if(dist > W) {
+                let ang = Math.atan2(dy, dx);
+                ctx.save();
+                ctx.translate(game.ship.p.x - game.cam.x + Math.cos(ang)*300, game.ship.p.y - game.cam.y + Math.sin(ang)*300);
+                ctx.rotate(ang);
+                ctx.fillStyle = 'var(--hawk-green)';
+                ctx.beginPath(); ctx.moveTo(15,0); ctx.lineTo(-10,10); ctx.lineTo(-10,-10); ctx.fill();
+                ctx.fillStyle = 'black'; ctx.font = '10px Bungee'; ctx.fillText(Math.floor(dist)+"m", -30, 4);
+                ctx.restore();
+            }
+        }
+    }
+    
+    ctx.restore();
+};
+
+const renderMinimap = () => {
+    mCvs.width = 250; mCvs.height = 150;
+    mCtx.clearRect(0,0,mCvs.width,mCvs.height);
+    
+    let sX = mCvs.width / game.env.w;
+    let sY = mCvs.height / 2000;
+    
+    // Ground
+    mCtx.beginPath(); mCtx.moveTo(0, mCvs.height);
+    for(let p of game.env.pts) mCtx.lineTo(p.x * sX, p.y * sY);
+    mCtx.lineTo(mCvs.width, mCvs.height);
+    mCtx.fillStyle = '#222'; mCtx.fill(); mCtx.strokeStyle = 'var(--hawk-gray)'; mCtx.stroke();
+    
+    // Pads
+    for(let p of game.env.pads) {
+        mCtx.fillStyle = p.main ? 'var(--hawk-green)' : 'var(--warn)';
+        mCtx.fillRect(p.x * sX, p.y * sY, p.w * sX, 4);
+    }
+    
+    // Ship
+    mCtx.fillStyle = 'white';
+    mCtx.fillRect(game.ship.p.x * sX - 2, game.ship.p.y * sY - 2, 4, 4);
+    
+    // Camera Box
+    mCtx.strokeStyle = 'rgba(255,255,255,0.2)';
+    mCtx.strokeRect(game.cam.x * sX, game.cam.y * sY, W * sX / getUpg('radar'), H * sY / getUpg('radar'));
+};
+
+const updateHUD = () => {
+    let s = game.ship;
+    let groundY = 2000;
+    for(let i=0; i<game.env.pts.length-1; i++) {
+        if(s.p.x >= game.env.pts[i].x && s.p.x <= game.env.pts[i+1].x) {
+            groundY = game.env.pts[i].y; break;
+        }
+    }
+    let alt = Math.max(0, groundY - s.p.y - s.h/2);
+    
+    document.getElementById('h-alt').innerText = alt.toFixed(1) + ' m';
+    document.getElementById('h-vx').innerText = (s.v.x * 60).toFixed(1) + ' m/s';
+    document.getElementById('h-vy').innerText = (s.v.y * 60).toFixed(1) + ' m/s';
+    document.getElementById('h-pitch').innerText = (s.a * (180/Math.PI)).toFixed(1) + '°';
+    
+    document.getElementById('h-cred').innerText = SaveData.credits + ' CR';
+    document.getElementById('h-sec').innerText = 'BERKELEY-' + SaveData.sector;
+    
+    let fPct = Math.max(0, (s.f / s.fMax) * 100);
+    let hPct = Math.max(0, (s.hp / s.hpMax) * 100);
+    
+    document.getElementById('fuel-bar').style.width = fPct + '%';
+    document.getElementById('hull-bar').style.width = hPct + '%';
+    
+    // Warnings
+    let stat = document.getElementById('h-status');
+    if(hPct < 30) { stat.innerText = 'HULL CRITICAL'; stat.className = 'hud-err'; }
+    else if(fPct < 20) { stat.innerText = 'BINGO FUEL'; stat.className = 'hud-warn'; }
+    else if(Math.abs(s.v.y*60) > s.safeV*60 && alt < 100) { stat.innerText = 'PULL UP'; stat.className = 'hud-err'; }
+    else { stat.innerText = 'NOMINAL'; stat.className = ''; }
+};
+
+// ============================================================================
+// UI & LOGIC MANAGEMENT
+// ============================================================================
+const showScreen = (id) => {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen'));
+    document.getElementById(id).classList.add('active-screen');
+    AudioSys.click();
+};
+
+const varColor = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+const logEvent = (msg) => {
+    const log = document.getElementById('flight-log');
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.innerText = `> ${msg}`;
+    log.appendChild(entry);
+    if(log.children.length > 5) log.removeChild(log.firstChild);
+};
+
+const startMission = () => {
+    SaveData.stats.flights++; saveGame();
+    showScreen('ui-layer'); // hides all full screens
+    document.getElementById('ui-layer').classList.remove('active-screen'); // clear backdrop
+    initLevel();
+    game.active = true;
+};
+
+const triggerGameOver = (reason) => {
+    game.active = false;
+    INP.locked = true;
+    document.getElementById('fail-reason').innerText = reason;
+    setTimeout(() => showScreen('fail-screen'), 1000);
+};
+
+const triggerWin = (isMain) => {
+    game.active = false;
+    INP.locked = true;
+    if(!game.cargo.on && game.cargo.hp <= 0) { triggerGameOver("CARGO LOST PRE-LANDING"); return; }
+    
+    SaveData.stats.succ++;
+    
+    let base = isMain ? (500 + SaveData.sector*100) : (200 + SaveData.sector*50);
+    if(!game.cargo.on) base = Math.floor(base * 0.2); // Penalty for dropping it but surviving
+    
+    let hullB = Math.floor((game.ship.hp / game.ship.hpMax) * 200);
+    let fuelB = Math.floor((game.ship.f / game.ship.fMax) * 200);
+    let total = base + hullB + fuelB;
+    
+    SaveData.credits += total;
+    SaveData.stats.totalCr += total;
+    saveGame();
+    
+    AudioSys.win();
+    
+    document.getElementById('win-base').innerText = base + ' CR';
+    document.getElementById('win-hull').innerText = hullB + ' CR';
+    document.getElementById('win-fuel').innerText = fuelB + ' CR';
+    document.getElementById('win-total').innerText = total + ' CR';
+    
+    setTimeout(() => showScreen('win-screen'), 1000);
+};
+
+const advanceSector = () => {
+    SaveData.sector++;
+    saveGame();
+    startMission();
+};
+
+let isPaused = false;
+const togglePause = () => {
+    if(!game.active && !isPaused) return;
+    isPaused = !isPaused;
+    if(isPaused) {
+        game.active = false;
+        AudioSys.stopThrust();
+        showScreen('pause-screen');
+    } else {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen'));
+        game.active = true;
+    }
+};
+
+// ============================================================================
+// BOOT SEQUENCE (C++ Style Terminal)
+// ============================================================================
+const runBootSequence = () => {
+    const lines = [
+        "void system_init();",
+        "Loading ARDUINO GUIDANCE SYSTEM v9.4...",
+        "Memory check: 640K OK.",
+        "Connecting to BERKELEY COMMAND CENTER...",
+        "Connection established. Encryption [AES-256] OK.",
+        "Loading Pilot Profile...",
+        "PILOT IDENTIFIED: JAAP (Age 14, Reg: 45 Plaza Dr)",
+        "Crew Roster Sync: KULBIR [ENG], JASJEET [NAV], GAGANPREET [COMMS]",
+        "Setting parameters for Sector " + SaveData.sector,
+        "Ready."
+    ];
+    
+    const container = document.getElementById('boot-text');
+    let delay = 0;
+    
+    lines.forEach((line, i) => {
+        setTimeout(() => {
+            let el = document.createElement('div');
+            el.className = 'boot-line';
+            el.innerText = `[${(performance.now()/1000).toFixed(3)}] ${line}`;
+            container.appendChild(el);
+            if(i % 2 === 0) AudioSys.click();
+        }, delay);
+        delay += Math.random() * 300 + 100;
+    });
+    
+    setTimeout(() => {
+        showScreen('menu-screen');
+        populateMissions();
+    }, delay + 800);
+};
+
+const populateMissions = () => {
+    const list = document.getElementById('mission-list');
+    list.innerHTML = `
+        <div style="color:var(--hawk-gray); margin-bottom: 10px;">PILOT STATISTICS</div>
+        <div>TOTAL FLIGHTS: ${SaveData.stats.flights}</div>
+        <div>SUCCESSFUL LANDINGS: ${SaveData.stats.succ}</div>
+        <div>CATASTROPHIC CRASHES: ${SaveData.stats.crashes}</div>
+        <div>LIFETIME EARNINGS: ${SaveData.stats.totalCr} CR</div>
+        <br>
+        <div style="color:var(--hawk-gray); margin-bottom: 10px;">SYSTEM HARDWARE</div>
+        <div>CPU: RASPBERRY PI 5 (OVERCLOCKED)</div>
+        <div>DISP: MSI THIN GF63 MATRIX</div>
+        <div>TELEM: GALAXY WATCH 5 PRO SENSOR SUITE</div>
+        <div>DRONE LINK: DJI NEO / OSMO MOBILE SE</div>
+    `;
+};
+
+// Start
+window.onload = () => {
+    requestAnimationFrame(loop);
+    runBootSequence();
+};
+
+</script>
+</body>
+</html>
