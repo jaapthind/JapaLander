@@ -3,1872 +3,1060 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JAAP SPACE: Advanced Orbital Descent Engine</title>
+    <title>JAAP SPACE: AEROSPACE SIMULATION ENGINE (v12.0.0-PRO)</title>
     <style>
-        /* ==========================================================================
-           CORE STYLES, VARIABLES & CRT EFFECTS
-           ========================================================================== */
         :root {
-            --seahawk-navy: #002244;
-            --seahawk-green: #69BE28;
-            --seahawk-grey: #A5ACAF;
-            --hud-glow: 0 0 12px rgba(105, 190, 40, 0.6);
-            --danger-glow: 0 0 20px rgba(255, 0, 0, 0.9);
-            --warn-glow: 0 0 15px rgba(255, 170, 0, 0.8);
-            --ui-bg: rgba(0, 15, 30, 0.85);
-            --grid-line: rgba(105, 190, 40, 0.15);
+            --pri: #69BE28; --sec: #002244; --ter: #A5ACAF; --bg: #000408;
+            --warn: #ffaa00; --crit: #ff0000; --info: #00ffff;
+            --font-main: 'Courier New', Courier, monospace;
+            --glow-pri: 0 0 15px rgba(105, 190, 40, 0.6);
+            --glow-crit: 0 0 25px rgba(255, 0, 0, 0.8);
+            --scan-color: rgba(105, 190, 40, 0.05);
         }
-
-        *, *::before, *::after { box-sizing: border-box; }
+        * { box-sizing: border-box; user-select: none; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg); color: var(--pri); font-family: var(--font-main); overflow: hidden; }
         
-        html, body {
-            margin: 0; padding: 0; width: 100%; height: 100%;
-            background-color: #000; color: var(--seahawk-green);
-            font-family: 'Consolas', 'Courier New', monospace;
-            overflow: hidden; user-select: none;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        #game-container { 
-            position: relative; width: 100%; height: 100%; background: #000; 
-            perspective: 1000px;
-        }
+        #engine-container { position: relative; width: 100vw; height: 100vh; perspective: 1200px; }
+        canvas { position: absolute; top: 0; left: 0; display: block; }
+        #layer-deepspace { z-index: 1; } #layer-planet { z-index: 2; } #layer-ship { z-index: 3; } #layer-fx { z-index: 4; mix-blend-mode: screen; } #layer-ui { z-index: 5; pointer-events: none; }
         
-        canvas { display: block; position: absolute; top: 0; left: 0; }
-        #bg-canvas { z-index: 1; }
-        #main-canvas { z-index: 2; }
-        #fx-canvas { z-index: 3; pointer-events: none; mix-blend-mode: screen; }
-        #ui-canvas { z-index: 4; pointer-events: none; }
+        /* Post Processing */
+        .crt-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; pointer-events: none;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%; mix-blend-mode: overlay;
+        }
+        .vignette { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 99; background: radial-gradient(circle, transparent 50%, rgba(0,0,0,0.95) 120%); pointer-events: none; }
+        .lens-flare { position: absolute; top: 50%; left: 50%; width: 200vw; height: 2px; background: rgba(105, 190, 40, 0.1); transform: translate(-50%, -50%) rotate(-15deg); filter: blur(4px); pointer-events: none; z-index: 98; opacity: 0; transition: opacity 0.5s; }
 
-        .scanlines {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 100;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
-                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            background-size: 100% 3px, 3px 100%; pointer-events: none; mix-blend-mode: overlay;
+        /* UI Base */
+        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 50; background: rgba(0,4,8,0.9); backdrop-filter: blur(10px); }
+        .screen.active { display: flex; }
+
+        /* INTRO SEQUENCE */
+        #intro-sys { display: grid; grid-template-columns: 1fr 1fr; width: 80%; height: 80%; }
+        .intro-col { display: flex; flex-direction: column; justify-content: flex-end; padding: 20px; font-size: 0.9rem; color: var(--ter); }
+        #intro-title-container { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+        #intro-title { font-size: 10rem; font-weight: 900; letter-spacing: 40px; color: #fff; text-shadow: 0 0 40px var(--pri), 0 0 80px var(--pri); opacity: 0; transform: scale(0.8); white-space: nowrap; margin-left: 40px; }
+        .intro-log-line { margin: 2px 0; opacity: 0.8; display: flex; gap: 10px; }
+        .intro-log-time { color: var(--info); }
+        .anim-glitch { animation: glitch 0.2s cubic-bezier(.25, .46, .45, .94) both infinite; }
+        .anim-reveal { animation: revealTitle 6s forwards cubic-bezier(0.1, 1, 0.2, 1); }
+        @keyframes revealTitle {
+            0% { opacity: 0; transform: scale(0.5); filter: blur(20px); letter-spacing: 100px; }
+            30% { opacity: 1; transform: scale(1.1); filter: blur(0px); letter-spacing: 35px; text-shadow: 0 0 100px #fff, 0 0 200px var(--pri); }
+            80% { opacity: 1; transform: scale(1); filter: blur(0px); letter-spacing: 40px; }
+            100% { opacity: 0; transform: scale(2); filter: blur(30px); }
         }
 
-        .vignette {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 99;
-            background: radial-gradient(circle, rgba(0,0,0,0) 50%, rgba(0,0,0,0.95) 100%); 
-            pointer-events: none;
-        }
-
-        .crt-flicker {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 98;
-            background: rgba(255,255,255,0.01); pointer-events: none;
-            animation: flicker 0.15s infinite;
-        }
-
-        @keyframes flicker {
-            0% { opacity: 0.95; } 50% { opacity: 0.85; } 100% { opacity: 0.95; }
-        }
-
-        /* ==========================================================================
-           SCREENS & UI OVERLAYS
-           ========================================================================== */
-        #ui-layer { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            z-index: 50; pointer-events: none; display: flex; flex-direction: column; 
-        }
+        /* MENU */
+        .btn { background: rgba(0,34,68,0.6); border: 1px solid var(--pri); color: var(--pri); padding: 20px 50px; font-family: var(--font-main); font-size: 1.5rem; text-transform: uppercase; letter-spacing: 4px; cursor: pointer; position: relative; overflow: hidden; transition: 0.3s; clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px); }
+        .btn::before { content:''; position:absolute; top:0; left:-100%; width:100%; height:100%; background: linear-gradient(90deg, transparent, rgba(105,190,40,0.3), transparent); transition: 0.5s; }
+        .btn:hover { background: var(--pri); color: #000; box-shadow: var(--glow-pri); transform: scale(1.02); }
+        .btn:hover::before { left: 100%; }
         
-        .screen { 
-            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.9); pointer-events: auto; 
-            backdrop-filter: blur(5px);
-        }
-        .screen.active { display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        #planet-carousel { display: flex; gap: 30px; overflow-x: auto; width: 90vw; padding: 40px 20px; scroll-snap-type: x mandatory; }
+        #planet-carousel::-webkit-scrollbar { height: 8px; } #planet-carousel::-webkit-scrollbar-thumb { background: var(--pri); }
+        .planet-card { min-width: 450px; height: 600px; border: 1px solid #333; background: rgba(0,10,20,0.8); scroll-snap-align: center; padding: 30px; display: flex; flex-direction: column; cursor: pointer; transition: 0.4s; position: relative; overflow: hidden; }
+        .planet-card:hover { border-color: var(--pri); transform: translateY(-15px); box-shadow: 0 20px 50px rgba(0,0,0,0.8), inset 0 0 30px rgba(105,190,40,0.1); z-index: 10; }
+        .pc-bg { position: absolute; top: -100px; right: -100px; width: 300px; height: 300px; border-radius: 50%; opacity: 0.1; transition: 0.5s; filter: blur(20px); }
+        .planet-card:hover .pc-bg { opacity: 0.3; transform: scale(1.2); filter: blur(10px); }
+        .pc-title { font-size: 3.5rem; font-weight: 900; margin: 0 0 20px 0; color: #fff; letter-spacing: 5px; text-transform: uppercase; z-index: 2; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .pc-stat { display: flex; justify-content: space-between; font-size: 1.1rem; margin: 10px 0; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 5px; z-index: 2; }
+        .pc-stat-val { color: var(--pri); font-weight: bold; }
+        .pc-desc { margin-top: auto; font-size: 1rem; line-height: 1.5; color: var(--ter); z-index: 2; font-style: italic; background: rgba(0,0,0,0.5); padding: 15px; border-left: 3px solid var(--pri); }
 
-        /* --- INTRO: JAAP SPACE BOOT SEQUENCE --- */
-        #intro-screen { background: #000; z-index: 999; }
+        /* ADVANCED HUD */
+        #hud-layer { position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none; }
+        .hud-panel { position: absolute; background: rgba(0,10,20,0.7); border: 1px solid rgba(105,190,40,0.3); padding: 20px; backdrop-filter: blur(5px); box-shadow: 0 0 20px rgba(0,0,0,0.8); }
+        .hud-panel::before { content:''; position:absolute; top:0; left:0; width:100%; height:2px; background: linear-gradient(90deg, transparent, var(--pri), transparent); }
         
-        #planet-flasher-container {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 500px; height: 500px; display: flex; justify-content: center; align-items: center;
-        }
+        /* Layout Grid */
+        #pnl-orbital { top: 20px; left: 20px; width: 400px; clip-path: polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%); }
+        #pnl-surface { top: 20px; right: 20px; width: 400px; clip-path: polygon(0 0, 100% 0, 100% 100%, 20px 100%, 0 calc(100% - 20px)); }
+        #pnl-vessel { bottom: 20px; left: 20px; width: 500px; clip-path: polygon(0 20px, 20px 0, 100% 0, 100% 100%, 0 100%); }
+        #pnl-systems { bottom: 20px; right: 20px; width: 400px; clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 0 100%); }
+        #pnl-navball { bottom: 20px; left: 50%; transform: translateX(-50%); width: 300px; height: 300px; border-radius: 50%; background: transparent; border: none; box-shadow: none; padding: 0; overflow: hidden; }
 
-        #planet-flasher {
-            width: 10px; height: 10px; border-radius: 50%;
-            box-shadow: inset -20px -20px 40px rgba(0,0,0,0.8), 0 0 50px rgba(255,255,255,0.1);
-            transition: all 0.1s; opacity: 0;
-        }
+        .data-row { display: flex; justify-content: space-between; align-items: center; margin: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 4px; }
+        .data-label { color: var(--ter); font-size: 0.95rem; text-transform: uppercase; letter-spacing: 1px; }
+        .data-val { color: #fff; font-family: monospace; font-size: 1.2rem; font-weight: bold; }
+        .val-pri { color: var(--pri); } .val-warn { color: var(--warn); text-shadow: 0 0 10px var(--warn); } .val-crit { color: var(--crit); text-shadow: var(--glow-crit); animation: blink 0.5s infinite; }
+        
+        .prog-bar { width: 100%; height: 12px; background: #111; border: 1px solid #444; margin-top: 5px; position: relative; }
+        .prog-fill { height: 100%; background: var(--pri); transition: 0.1s; }
+        .prog-markers { position:absolute; top:0; left:0; width:100%; height:100%; background: repeating-linear-gradient(90deg, transparent, transparent 9.5%, rgba(0,0,0,0.8) 10%); }
 
-        #intro-data-ring {
-            position: absolute; width: 100%; height: 100%; border: 1px dashed rgba(255,255,255,0.2);
-            border-radius: 50%; animation: spin 10s linear infinite; opacity: 0;
-        }
+        /* NAVBALL 3D CSS */
+        .navball-container { position: relative; width: 100%; height: 100%; border-radius: 50%; border: 4px solid #333; background: #000; overflow: hidden; box-shadow: inset 0 0 50px rgba(0,0,0,0.9), 0 0 30px rgba(0,0,0,0.8); transform: perspective(600px) rotateX(20deg); }
+        .nav-sphere { position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: linear-gradient(0deg, #8b4513 50%, #4682b4 50%); border-radius: 50%; transition: transform 0.05s linear; transform-style: preserve-3d; }
+        .nav-overlay { position: absolute; top:0; left:0; width:100%; height:100%; border-radius:50%; box-shadow: inset 0 0 40px #000; pointer-events: none; }
+        .nav-crosshair { position: absolute; top:50%; left:50%; width: 40px; height: 40px; transform: translate(-50%, -50%); border: 3px solid var(--warn); border-radius: 50%; box-shadow: 0 0 10px var(--warn); z-index: 10; }
+        .nav-crosshair::before { content:''; position:absolute; top:50%; left:-10px; width:10px; height:3px; background:var(--warn); }
+        .nav-crosshair::after { content:''; position:absolute; top:50%; right:-10px; width:10px; height:3px; background:var(--warn); }
+        .nav-prograde { position: absolute; top:50%; left:50%; width:20px; height:20px; border: 2px solid #0ff; border-radius: 50%; transform: translate(-50%, -50%); transition: 0.1s; z-index: 5; }
 
-        #intro-planet-name {
-            position: absolute; bottom: -50px; color: #fff; font-size: 2rem; letter-spacing: 10px;
-            text-transform: uppercase; opacity: 0; font-weight: bold;
-        }
-
-        #jaap-space-text {
-            font-size: 12rem; font-weight: 900; letter-spacing: 35px; color: #fff;
-            text-shadow: 0 0 30px var(--seahawk-green), 0 0 60px var(--seahawk-green), 0 0 100px #fff;
-            opacity: 0; position: absolute; top: 50%; left: 50%; text-align: center; margin: 0;
-            transform: translate(-50%, -50%) scale(0.1); white-space: nowrap;
-        }
-
-        .animate-reveal { animation: epicReveal 3s forwards cubic-bezier(0.1, 1, 0.2, 1); }
-        
-        @keyframes epicReveal {
-            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.1); filter: blur(30px) brightness(5); }
-            20% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); filter: blur(0px) brightness(2); text-shadow: 0 0 50px #fff, 0 0 150px var(--seahawk-green); }
-            80% { opacity: 1; transform: translate(-50%, -50%) scale(1); filter: blur(0px) brightness(1); }
-            100% { opacity: 0; transform: translate(-50%, -50%) scale(2); filter: blur(20px); }
-        }
-
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-
-        #boot-log-container {
-            position: absolute; bottom: 30px; left: 30px; width: 600px; height: 300px;
-            overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end;
-            mask-image: linear-gradient(to top, black 50%, transparent 100%);
-        }
-        
-        .boot-line {
-            color: var(--seahawk-green); font-size: 0.95rem; text-align: left; opacity: 0.8;
-            margin: 2px 0; font-family: monospace; display: flex; gap: 15px;
-        }
-        .boot-time { color: var(--seahawk-grey); }
-        .boot-status { color: #fff; }
-
-        /* --- MENU & SELECTION --- */
-        .menu-bg-grid {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background-image: linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-            background-size: 50px 50px; transform: perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px);
-            animation: gridMove 5s linear infinite; pointer-events: none;
-        }
-        
-        @keyframes gridMove { 0% { background-position: 0 0; } 100% { background-position: 0 50px; } }
-
-        h1.title { 
-            font-size: 6rem; text-shadow: var(--hud-glow); margin-bottom: 0; 
-            text-transform: uppercase; letter-spacing: 15px; color: #fff; z-index: 2;
-        }
-        
-        .subtitle { 
-            font-size: 1.8rem; color: var(--seahawk-grey); margin-bottom: 60px; 
-            letter-spacing: 6px; z-index: 2; border-bottom: 2px solid var(--seahawk-green);
-            padding-bottom: 15px;
-        }
-        
-        .btn {
-            background: rgba(0, 34, 68, 0.7); border: 2px solid var(--seahawk-green); 
-            color: var(--seahawk-green); padding: 25px 80px; font-size: 2rem; 
-            font-family: inherit; font-weight: bold; cursor: pointer; z-index: 2;
-            text-transform: uppercase; letter-spacing: 5px; transition: all 0.3s; 
-            position: relative; overflow: hidden; box-shadow: var(--hud-glow);
-            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
-        }
-        
-        .btn::before {
-            content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(105, 190, 40, 0.4), transparent);
-            transition: left 0.5s;
-        }
-        
-        .btn:hover { background: var(--seahawk-green); color: #000; box-shadow: 0 0 50px var(--seahawk-green); transform: scale(1.05); }
-        .btn:hover::before { left: 200%; }
-
-        #planet-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 30px; width: 95%; max-width: 2000px; max-height: 70vh; overflow-y: auto; 
-            padding: 30px; z-index: 2; scroll-behavior: smooth;
-        }
-        
-        #planet-grid::-webkit-scrollbar { width: 10px; }
-        #planet-grid::-webkit-scrollbar-track { background: rgba(0,0,0,0.5); border-left: 1px solid #333; }
-        #planet-grid::-webkit-scrollbar-thumb { background: var(--seahawk-green); }
-
-        .planet-card {
-            border: 1px solid #444; background: var(--ui-bg); padding: 30px; cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); position: relative; 
-            display: flex; flex-direction: column; 
-            clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
-        }
-        
-        .planet-card::before { 
-            content:''; position: absolute; top:0; left:0; width: 5px; height: 100%; 
-            background: #444; transition: 0.3s; 
-        }
-        
-        .planet-card:hover::before { background: var(--seahawk-green); box-shadow: var(--hud-glow); }
-        .planet-card:hover { border-color: var(--seahawk-green); transform: translateY(-10px) scale(1.02); box-shadow: 0 15px 30px rgba(0,0,0,0.8); z-index: 10; }
-        
-        .card-header { display: flex; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 15px; }
-        .card-swatch { width: 40px; height: 40px; border-radius: 50%; margin-right: 20px; box-shadow: inset -5px -5px 15px rgba(0,0,0,0.6), 0 0 10px rgba(255,255,255,0.2); }
-        .card-title { font-size: 2.5rem; font-weight: 900; text-transform: uppercase; color: #fff; margin: 0; letter-spacing: 2px;}
-        .card-stat { display: flex; justify-content: space-between; margin: 8px 0; font-size: 1.1rem; color: var(--seahawk-grey); border-bottom: 1px dashed rgba(255,255,255,0.05); padding-bottom: 4px;}
-        .stat-val { color: #fff; font-weight: bold; font-family: monospace; font-size: 1.2rem; }
-        .card-desc { margin-top: 20px; font-size: 1rem; color: #aaa; line-height: 1.6; border-top: 1px solid #333; padding-top: 15px; font-style: italic; }
-
-        /* --- ADVANCED FLIGHT HUD --- */
-        #hud { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-        
-        .hud-panel { 
-            position: absolute; border: 1px solid rgba(105, 190, 40, 0.4); background: var(--ui-bg); 
-            padding: 25px; box-shadow: var(--hud-glow); backdrop-filter: blur(10px);
-            clip-path: polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px);
-        }
-        
-        .hud-panel::after { 
-            content:''; position:absolute; top:0; left:0; width:100%; height:3px; 
-            background: linear-gradient(90deg, transparent, var(--seahawk-green), transparent); 
-        }
-        
-        #hud-tl { top: 30px; left: 30px; width: 450px; }
-        #hud-tr { top: 30px; right: 30px; width: 450px; text-align: right; }
-        #hud-bl { bottom: 30px; left: 30px; width: 450px; }
-        #hud-br { bottom: 30px; right: 30px; width: 450px; text-align: right; }
-        
-        #hud-c-top { top: 30px; left: 50%; transform: translateX(-50%); width: 600px; display: flex; flex-direction: column; align-items: center; background: transparent; border: none; box-shadow: none;}
-        #hud-c-bot { bottom: 30px; left: 50%; transform: translateX(-50%); width: 800px; display: flex; justify-content: space-between; align-items: flex-end; }
-        
-        .hud-header { color: #fff; margin-bottom: 25px; font-weight: 900; font-size: 1.4rem; letter-spacing: 4px; border-bottom: 2px solid var(--seahawk-green); padding-bottom: 10px; text-transform: uppercase;}
-        .hud-row { display: flex; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px dotted rgba(255,255,255,0.15); padding-bottom: 8px; align-items: center;}
-        .hud-label { color: var(--seahawk-grey); font-size: 1.15rem; letter-spacing: 1px;}
-        .hud-value { color: var(--seahawk-green); font-size: 1.4rem; font-weight: bold; font-family: monospace; }
-        .hud-value.warn { color: #ffaa00; text-shadow: var(--warn-glow); }
-        .hud-value.crit { color: #ff0000; animation: blink 0.3s infinite; text-shadow: var(--danger-glow); }
-
-        .bar-wrap { width: 100%; height: 25px; background: rgba(0,0,0,0.9); border: 1px solid #555; margin-top: 8px; position: relative; overflow: hidden; }
-        .bar-fill { height: 100%; background: var(--seahawk-green); transition: width 0.1s linear, background 0.3s; }
-        .bar-markers { position: absolute; top:0; left:0; width:100%; height:100%; background: repeating-linear-gradient(90deg, transparent, transparent 9.5%, rgba(0,0,0,0.8) 10%); }
-
-        /* NAVBALL & CROSSHAIR */
-        #nav-compass {
-            position: absolute; top: 10px; width: 400px; height: 30px; border: 1px solid var(--seahawk-green);
-            background: rgba(0,0,0,0.8); overflow: hidden;
-        }
-        #compass-strip {
-            position: absolute; top: 0; left: 0; height: 100%; display: flex; align-items: center;
-            font-family: monospace; font-size: 1.2rem; color: #fff; white-space: nowrap; transition: transform 0.1s linear;
-        }
-
-        #crosshair {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 500px; height: 500px; pointer-events: none;
-        }
-        .ch-line { position: absolute; background: rgba(105, 190, 40, 0.4); box-shadow: var(--hud-glow); }
-        .ch-v { top: 0; left: 249px; width: 2px; height: 500px; }
-        .ch-h { top: 249px; left: 0; width: 500px; height: 2px; }
-        .ch-c { 
-            position: absolute; top: 235px; left: 235px; width: 30px; height: 30px; 
-            border: 3px solid var(--seahawk-green); border-radius: 50%; box-shadow: var(--hud-glow); 
-        }
-        .ch-c::after { content:''; position:absolute; top:12px; left:12px; width:6px; height:6px; background:var(--seahawk-green); border-radius:50%; }
-        
-        .pitch-ladder-container {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 250px; height: 2000px; /* Huge to allow scrolling */
-            overflow: hidden; pointer-events: none;
-            clip-path: polygon(0 40%, 100% 40%, 100% 60%, 0 60%);
-        }
-        .pitch-ladder { 
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-            width: 100%; height: 100%; transition: transform 0.05s linear;
-        }
-        .pitch-rung {
-            position: absolute; left: 50%; transform: translateX(-50%); width: 100px; height: 2px;
-            background: var(--seahawk-green); display: flex; justify-content: space-between; align-items: center;
-        }
-        .pitch-rung::before, .pitch-rung::after {
-            content: attr(data-val); color: #fff; font-family: monospace; font-size: 1.2rem;
-            position: absolute; top: -10px; text-shadow: 1px 1px 2px #000;
-        }
-        .pitch-rung::before { left: -40px; } .pitch-rung::after { right: -40px; }
-        .pitch-rung.neg { border-bottom: 2px dashed var(--seahawk-green); background: transparent; }
-
-        #prograde-marker {
-            position: absolute; width: 40px; height: 40px; border: 2px solid #0ff; border-radius: 50%;
-            top: 50%; left: 50%; transform: translate(-50%, -50%); transition: 0.1s linear;
-            box-shadow: 0 0 10px #0ff; z-index: 10;
-        }
-        #prograde-marker::before { content:''; position:absolute; top:-10px; left:18px; width:4px; height:10px; background:#0ff; }
-        #prograde-marker::after { content:''; position:absolute; top:18px; left:-10px; width:10px; height:4px; background:#0ff; }
-        .pro-wing { position:absolute; top:18px; right:-10px; width:10px; height:4px; background:#0ff; }
-
-        /* TELEMETRY GRAPHS */
-        .graph-container { width: 100%; height: 100px; background: rgba(0,0,0,0.8); border: 1px solid #444; margin-top: 15px; position: relative; }
-        .graph-canvas { width: 100%; height: 100%; display: block; }
-        .graph-label { position: absolute; top: 5px; left: 5px; color: #fff; font-size: 0.8rem; background: rgba(0,0,0,0.5); padding: 2px 5px;}
+        /* CENTER RETICLE */
+        #center-reticle { position: absolute; top:50%; left:50%; transform: translate(-50%, -50%); width: 800px; height: 800px; border-radius: 50%; pointer-events: none; }
+        .ret-line { position: absolute; background: rgba(105,190,40,0.3); }
+        .ret-v { top: 100px; left: 399px; width: 2px; height: 600px; }
+        .ret-h { top: 399px; left: 100px; width: 600px; height: 2px; }
+        .pitch-ladder { position: absolute; top: 50%; left: 50%; width: 300px; height: 2000px; transform-origin: center center; }
+        .ladder-rung { position: absolute; left: 50%; transform: translateX(-50%); width: 120px; height: 2px; background: var(--pri); display: flex; justify-content: space-between; align-items: center; }
+        .ladder-rung.neg { background: transparent; border-bottom: 2px dashed var(--pri); }
+        .ladder-rung::before, .ladder-rung::after { content: attr(data-p); position: absolute; top: -10px; color: #fff; font-family: monospace; font-size: 1.2rem; }
+        .ladder-rung::before { left: -40px; } .ladder-rung::after { right: -40px; }
 
         /* WARNINGS */
-        #warning-container {
-            position: absolute; top: 20%; left: 50%; transform: translate(-50%, -50%);
-            display: flex; flex-direction: column; gap: 15px; align-items: center;
-        }
-        .master-warn {
-            font-size: 6rem; color: #f00; font-weight: 900; letter-spacing: 20px;
-            text-shadow: var(--danger-glow); display: none; animation: blink 0.25s infinite;
-            background: rgba(50,0,0,0.5); padding: 10px 40px; border: 4px solid #f00;
-        }
-        .sub-warn {
-            font-size: 2.5rem; color: #fa0; font-weight: bold; letter-spacing: 10px;
-            text-shadow: var(--warn-glow); display: none; animation: blink 0.5s infinite;
-        }
-
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.1; } }
-
-        /* --- END SCREEN --- */
-        #end-screen .content { 
-            background: rgba(0, 15, 30, 0.95); border: 3px solid var(--seahawk-green); 
-            padding: 80px; min-width: 900px; box-shadow: 0 0 100px rgba(0,0,0,0.9);
-            position: relative; overflow: hidden;
-        }
-        #end-screen .content::before {
-            content: 'DEBRIEFING'; position: absolute; top: -20px; right: -20px; font-size: 8rem;
-            color: rgba(255,255,255,0.03); font-weight: 900; pointer-events: none;
-        }
-        #end-title { font-size: 5rem; margin-bottom: 40px; text-align: center; font-weight: 900; letter-spacing: 10px; border-bottom: 2px solid #555; padding-bottom: 20px;}
-        .end-stat { display: flex; justify-content: space-between; font-size: 1.8rem; margin: 20px 0; border-bottom: 1px dotted rgba(255,255,255,0.1); padding-bottom: 15px; }
-        .success-text { color: var(--seahawk-green); text-shadow: var(--hud-glow); }
-        .fail-text { color: #f00; text-shadow: var(--danger-glow); }
+        #master-alarm { position: absolute; top: 15%; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .alarm-box { background: rgba(50,0,0,0.8); border: 2px solid var(--crit); color: var(--crit); padding: 10px 40px; font-size: 3rem; font-weight: 900; letter-spacing: 15px; text-shadow: var(--glow-crit); box-shadow: 0 0 30px rgba(255,0,0,0.5); animation: blink 0.2s infinite; display: none; white-space: nowrap; }
         
-        /* DATA OVERLAY FOR DEEP SPACE */
-        #target-box {
-            position: absolute; border: 1px solid var(--seahawk-green); width: 100px; height: 100px;
-            transform: translate(-50%, -50%); display: none; pointer-events: none;
-        }
-        #target-box::before { content: 'TARGET LOCK'; position: absolute; top: -20px; left: 0; color: var(--seahawk-green); font-size: 0.9rem; white-space: nowrap; }
-        #target-box::after { content: attr(data-dist); position: absolute; bottom: -20px; right: 0; color: #0ff; font-size: 0.9rem; white-space: nowrap; }
-        .corner { position: absolute; width: 10px; height: 10px; border-color: var(--seahawk-green); border-style: solid; }
-        .tl { top: -1px; left: -1px; border-width: 3px 0 0 3px; }
-        .tr { top: -1px; right: -1px; border-width: 3px 3px 0 0; }
-        .bl { bottom: -1px; left: -1px; border-width: 0 0 3px 3px; }
-        .br { bottom: -1px; right: -1px; border-width: 0 3px 3px 0; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
 
+        /* END DEBRIEF */
+        #end-screen { background: rgba(0,0,0,0.95); }
+        #end-card { width: 1000px; background: rgba(0,15,30,0.9); border: 1px solid var(--pri); padding: 60px; position: relative; box-shadow: 0 0 50px rgba(0,0,0,1); }
+        #end-title { font-size: 5rem; font-weight: 900; border-bottom: 4px solid #333; padding-bottom: 20px; margin-bottom: 40px; text-align: center; }
+        .debrief-row { display: flex; justify-content: space-between; font-size: 1.8rem; margin: 15px 0; border-bottom: 1px dotted #333; padding-bottom: 10px; }
+        #end-rating { font-size: 4rem; text-align: center; margin-top: 50px; font-weight: 900; }
+        
+        /* Loading Bar */
+        #loader { width: 400px; height: 20px; border: 2px solid var(--pri); margin-top: 30px; position: relative; overflow: hidden; display: none; }
+        #loader-fill { height: 100%; width: 0%; background: var(--pri); transition: 0.1s; }
     </style>
 </head>
 <body>
 
-<div id="game-container">
-    <canvas id="bg-canvas"></canvas>
-    <canvas id="main-canvas"></canvas>
-    <canvas id="fx-canvas"></canvas>
-    <canvas id="ui-canvas"></canvas>
+<div id="engine-container">
+    <canvas id="layer-deepspace"></canvas>
+    <canvas id="layer-planet"></canvas>
+    <canvas id="layer-ship"></canvas>
+    <canvas id="layer-fx"></canvas>
+    <canvas id="layer-ui"></canvas>
     
     <div class="vignette"></div>
-    <div class="scanlines"></div>
-    <div class="crt-flicker"></div>
+    <div class="crt-overlay"></div>
+    <div class="lens-flare" id="lens-flare"></div>
 
-    <div id="ui-layer">
+    <div id="intro-screen" class="screen active">
+        <div id="intro-sys">
+            <div class="intro-col" id="boot-log-left"></div>
+            <div class="intro-col" id="boot-log-right" style="align-items: flex-end; text-align: right;"></div>
+        </div>
+        <div id="intro-title-container">
+            <div id="intro-title">JAAP SPACE</div>
+        </div>
+        <div id="loader"><div id="loader-fill"></div></div>
+    </div>
+
+    <div id="menu-screen" class="screen">
+        <h1 style="font-size: 4rem; color: #fff; letter-spacing: 20px; text-shadow: var(--glow-pri); margin-bottom: 10px;">MISSION SELECT</h1>
+        <div style="color: var(--ter); font-size: 1.2rem; letter-spacing: 5px; margin-bottom: 40px;">ORBITAL INSERTION & DESCENT TRAJECTORY PLANNING</div>
+        <div id="planet-carousel"></div>
+    </div>
+
+    <div id="hud-layer">
         
-        <div id="intro-screen" class="screen active">
-            <div id="planet-flasher-container">
-                <div id="intro-data-ring"></div>
-                <div id="planet-flasher"></div>
-                <div id="intro-planet-name">INITIALIZING</div>
-            </div>
-            <h1 id="jaap-space-text">JAAP SPACE</h1>
-            <div id="boot-log-container"></div>
+        <div id="master-alarm">
+            <div class="alarm-box" id="warn-pullup">TERRAIN PULL UP</div>
+            <div class="alarm-box" id="warn-temp">THERMAL CRITICAL</div>
+            <div class="alarm-box" id="warn-aero">AERODYNAMIC STRESS</div>
         </div>
 
-        <div id="menu-screen" class="screen">
-            <div class="menu-bg-grid"></div>
-            <h1 class="title">Orbital Descent</h1>
-            <div class="subtitle">AEROSPACE SIMULATION ENGINE v11.8.2 | PILOT: JAAP | VESSEL: SEAHAWK-1</div>
-            <button class="btn" id="btn-init">Initialize Navigation Computer</button>
+        <div id="center-reticle">
+            <div class="ret-line ret-v"></div>
+            <div class="ret-line ret-h"></div>
+            <div class="pitch-ladder" id="hud-ladder"></div>
         </div>
 
-        <div id="select-screen" class="screen">
-            <h1 style="font-size: 4rem; margin: 40px 0; color: #fff; text-shadow: var(--hud-glow); letter-spacing: 10px; z-index: 2;">SELECT DESTINATION</h1>
-            <div id="planet-grid"></div>
-            <button class="btn" id="btn-back" style="margin-top: 40px; font-size: 1.5rem; padding: 20px 60px;">Abort Mission Sequence</button>
+        <div class="hud-panel" id="pnl-orbital">
+            <div style="font-size: 1.2rem; font-weight: 900; color: #fff; margin-bottom: 15px; border-bottom: 2px solid var(--pri); padding-bottom: 5px;">ORBITAL MECHANICS</div>
+            <div class="data-row"><span class="data-label">BODY</span><span class="data-val" id="ui-body">---</span></div>
+            <div class="data-row"><span class="data-label">ALTITUDE</span><span class="data-val val-pri" id="ui-alt">0.00 km</span></div>
+            <div class="data-row"><span class="data-label">APOAPSIS</span><span class="data-val" id="ui-apo">0.00 km</span></div>
+            <div class="data-row"><span class="data-label">PERIAPSIS</span><span class="data-val" id="ui-peri">0.00 km</span></div>
+            <div class="data-row"><span class="data-label">ECCENTRICITY</span><span class="data-val" id="ui-ecc">0.000</span></div>
+            <div class="data-row"><span class="data-label">ORBITAL VEL</span><span class="data-val val-pri" id="ui-ovel">0.0 m/s</span></div>
+            <div class="data-row"><span class="data-label">INCLINATION</span><span class="data-val" id="ui-inc">0.0°</span></div>
         </div>
 
-        <div id="hud">
-            
-            <div id="warning-container">
-                <div class="master-warn" id="warn-terrain">TERRAIN PULL UP</div>
-                <div class="master-warn" id="warn-heat">HULL INTEGRITY CRITICAL</div>
-                <div class="sub-warn" id="warn-speed">OVERSPEED WARNING</div>
-            </div>
+        <div class="hud-panel" id="pnl-surface">
+            <div style="font-size: 1.2rem; font-weight: 900; color: #fff; margin-bottom: 15px; border-bottom: 2px solid var(--pri); padding-bottom: 5px;">SURFACE KINEMATICS</div>
+            <div class="data-row"><span class="data-label">RADAR ALTIMETER</span><span class="data-val val-warn" id="ui-radar">0.0 m</span></div>
+            <div class="data-row"><span class="data-label">VERTICAL VEL</span><span class="data-val" id="ui-vvel">0.0 m/s</span></div>
+            <div class="data-row"><span class="data-label">LATERAL VEL</span><span class="data-val" id="ui-hvel">0.0 m/s</span></div>
+            <div class="data-row"><span class="data-label">GRAVITY (LOCAL)</span><span class="data-val" id="ui-g">0.00 m/s²</span></div>
+            <div class="data-row"><span class="data-label">ATMO DENSITY</span><span class="data-val" id="ui-rho">0.000 kg/m³</span></div>
+            <div class="data-row"><span class="data-label">DYNAMIC PRES(Q)</span><span class="data-val" id="ui-q">0.00 kPa</span></div>
+            <div class="data-row"><span class="data-label">MACH NUMBER</span><span class="data-val" id="ui-mach">0.00</span></div>
+        </div>
 
-            <div id="target-box" data-dist="10000 km">
-                <div class="corner tl"></div><div class="corner tr"></div>
-                <div class="corner bl"></div><div class="corner br"></div>
-            </div>
-
-            <div id="hud-c-top" class="hud-panel">
-                <div id="nav-compass"><div id="compass-strip"></div></div>
-            </div>
-
-            <div id="crosshair">
-                <div class="ch-line ch-v"></div>
-                <div class="ch-line ch-h"></div>
-                <div class="ch-c"></div>
-                <div id="prograde-marker"><div class="pro-wing"></div></div>
-                
-                <div class="pitch-ladder-container">
-                    <div class="pitch-ladder" id="hud-pitch-ladder">
-                        </div>
+        <div class="hud-panel" id="pnl-vessel">
+            <div style="font-size: 1.2rem; font-weight: 900; color: #fff; margin-bottom: 15px; border-bottom: 2px solid var(--pri); padding-bottom: 5px;">VESSEL PROPULSION & THERMAL</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <div class="data-row" style="border:none; margin:0;"><span class="data-label">LFO TANK</span><span class="data-val" id="ui-fuel">100%</span></div>
+                    <div class="prog-bar"><div class="prog-fill" id="bar-fuel" style="background:#ffaa00;"></div><div class="prog-markers"></div></div>
+                    <div class="data-row" style="border:none; margin:15px 0 0 0;"><span class="data-label">MONOPROP</span><span class="data-val" id="ui-rcs">100%</span></div>
+                    <div class="prog-bar"><div class="prog-fill" id="bar-rcs" style="background:#00ffff;"></div><div class="prog-markers"></div></div>
                 </div>
-            </div>
-            
-            <div class="hud-panel" id="hud-tl">
-                <div class="hud-header">ORBITAL KINEMATICS</div>
-                <div class="hud-row"><span class="hud-label">ALTITUDE (ASL)</span><span class="hud-value" id="h-alt">0.00 km</span></div>
-                <div class="hud-row"><span class="hud-label">RADAR (AGL)</span><span class="hud-value" id="h-radar">0.00 m</span></div>
-                <div class="hud-row"><span class="hud-label">APOAPSIS</span><span class="hud-value" id="h-apo">0.00 km</span></div>
-                <div class="hud-row"><span class="hud-label">PERIAPSIS</span><span class="hud-value" id="h-peri">0.00 km</span></div>
-                <div class="hud-row"><span class="hud-label">ORBITAL VEL</span><span class="hud-value" id="h-ovel">0.0 m/s</span></div>
-                <div class="hud-row"><span class="hud-label">VERTICAL VEL</span><span class="hud-value" id="h-vvel">0.0 m/s</span></div>
-                <div class="hud-row"><span class="hud-label">SURFACE VEL</span><span class="hud-value" id="h-svel">0.0 m/s</span></div>
-                <div class="graph-container">
-                    <div class="graph-label">ALT VS VELOCITY PROFILE</div>
-                    <canvas id="graph-traj" class="graph-canvas"></canvas>
-                </div>
-            </div>
-
-            <div class="hud-panel" id="hud-tr">
-                <div class="hud-header">SENSORS & THERMODYNAMICS</div>
-                <div class="hud-row"><span class="hud-label">TARGET BODY</span><span class="hud-value" id="h-target" style="color:#fff;">---</span></div>
-                <div class="hud-row"><span class="hud-label">LOCAL GRAVITY</span><span class="hud-value" id="h-grav">0.00 m/s²</span></div>
-                <div class="hud-row"><span class="hud-label">ATM. DENSITY</span><span class="hud-value" id="h-atm">0.000 kg/m³</span></div>
-                <div class="hud-row"><span class="hud-label">DYNAMIC PRES (Q)</span><span class="hud-value" id="h-q">0.00 kPa</span></div>
-                <div class="hud-row"><span class="hud-label">PITCH ANGLE</span><span class="hud-value" id="h-pitch">0.0°</span></div>
-                <div class="hud-row"><span class="hud-label">G-FORCE</span><span class="hud-value" id="h-gforce">1.00 G</span></div>
-                
-                <div class="hud-row" style="margin-top:25px; border:none;"><span class="hud-label" style="color:#fff;">SHIELD TEMPERATURE</span><span class="hud-value" id="h-temp-val">293 K</span></div>
-                <div class="bar-wrap"><div class="bar-fill" id="h-temp-bar" style="background:var(--seahawk-green); width:10%;"></div><div class="bar-markers"></div></div>
-            </div>
-
-            <div class="hud-panel" id="hud-bl" style="height: 200px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end;">
-                <div class="hud-header" style="margin-bottom: 5px; font-size: 1rem;">MISSION EVENT LOG</div>
-                <div id="flight-logs" style="font-family: monospace; font-size: 0.9rem; color: #aaa; line-height: 1.4;">
+                <div>
+                    <div class="data-row" style="border:none; margin:0;"><span class="data-label">SHIELD TEMP</span><span class="data-val" id="ui-temp">293 K</span></div>
+                    <div class="prog-bar"><div class="prog-fill" id="bar-temp"></div><div class="prog-markers"></div></div>
+                    <div style="margin-top: 15px; text-align: center;">
+                        <div class="data-label">MAIN ENGINE THRUST</div>
+                        <div style="font-size: 2.5rem; font-weight: 900; color: var(--pri); text-shadow: var(--glow-pri);" id="ui-thrust">0 kN</div>
                     </div>
-            </div>
-
-            <div class="hud-panel" id="hud-c-bot">
-                <div style="width: 35%;">
-                    <div class="hud-row" style="border:none;"><span class="hud-label" style="color:#fff;">MAIN LFO (LIQUID FUEL / OX)</span><span class="hud-value" id="h-fuel-val">100.0%</span></div>
-                    <div class="bar-wrap" style="height:35px;"><div class="bar-fill" id="h-fuel-bar" style="width:100%; background: #ff5500;"></div><div class="bar-markers"></div></div>
-                </div>
-                
-                <div style="width: 25%; text-align: center;">
-                    <div class="hud-label" style="margin-bottom: 5px; letter-spacing: 2px;">MAIN ENGINE</div>
-                    <div id="h-thrust-status" style="font-size: 3rem; font-weight: 900; color: var(--seahawk-green); text-shadow: var(--hud-glow);">IDLE</div>
-                    <div style="margin-top: 5px; color: #fff; font-family: monospace;">THRUST: <span id="h-thrust-kn">0.0</span> kN</div>
-                </div>
-                
-                <div style="width: 35%; text-align: right;">
-                    <div class="hud-row" style="border:none; justify-content: flex-end; gap:20px;"><span class="hud-label" style="color:#fff;">RCS MONOPROPELLANT</span><span class="hud-value" id="h-rcs-val">100.0%</span></div>
-                    <div class="bar-wrap" style="height:35px;"><div class="bar-fill" id="h-rcs-bar" style="background:#0ff; width:100%;"></div><div class="bar-markers"></div></div>
                 </div>
             </div>
         </div>
 
-        <div id="end-screen" class="screen">
-            <div class="content">
-                <h1 id="end-title">MISSION DEBRIEF</h1>
-                <div class="end-stat"><span>Destination Body:</span> <span id="e-target" style="color:#fff;">---</span></div>
-                <div class="end-stat"><span>Touchdown Velocity (V):</span> <span id="e-vvel">0.00 m/s</span></div>
-                <div class="end-stat"><span>Touchdown Velocity (H):</span> <span id="e-hvel">0.00 m/s</span></div>
-                <div class="end-stat"><span>Max Hull Temperature:</span> <span id="e-temp">0 K</span></div>
-                <div class="end-stat"><span>Max G-Force Sustained:</span> <span id="e-maxg">1.0 G</span></div>
-                <div class="end-stat"><span>Remaining Delta-V Mass:</span> <span id="e-fuel">0 kg</span></div>
-                <div class="end-stat" style="border-top: 5px solid #fff; padding-top:30px; margin-top:40px; font-size: 2.5rem;">
-                    <span>FLIGHT RATING:</span> <span id="e-rating" style="font-weight: 900;">---</span>
-                </div>
-                <div id="e-cause" style="text-align: center; color: #aaa; margin-top: 20px; font-size: 1.2rem; font-style: italic;"></div>
-                <div style="text-align: center; margin-top: 60px;">
-                    <button class="btn" id="btn-restart">TRANSMIT DATA & RETURN TO MENU</button>
-                </div>
+        <div class="hud-panel" id="pnl-systems">
+            <div style="font-size: 1.2rem; font-weight: 900; color: #fff; margin-bottom: 15px; border-bottom: 2px solid var(--pri); padding-bottom: 5px;">AVIONICS BUS</div>
+            <div id="sys-log" style="height: 120px; overflow: hidden; font-family: monospace; font-size: 0.85rem; color: #888; line-height: 1.3; display: flex; flex-direction: column; justify-content: flex-end;"></div>
+            <div style="margin-top: 10px; display: flex; justify-content: space-between;">
+                <span class="data-label">G-FORCE LIMIT</span><span class="data-val" id="ui-gforce">1.0 G</span>
             </div>
         </div>
 
+        <div id="pnl-navball">
+            <div class="navball-container">
+                <div class="nav-sphere" id="nav-sphere"></div>
+                <div class="nav-overlay"></div>
+                <div class="nav-crosshair"></div>
+                <div class="nav-prograde" id="nav-prograde"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="end-screen" class="screen">
+        <div id="end-card">
+            <h1 id="end-title">MISSION DEBRIEF</h1>
+            <div class="debrief-row"><span>STATUS:</span><span id="d-status" style="font-weight: bold;">---</span></div>
+            <div class="debrief-row"><span>DESTINATION:</span><span id="d-body">---</span></div>
+            <div class="debrief-row"><span>IMPACT VELOCITY (V):</span><span id="d-vvel">0.00 m/s</span></div>
+            <div class="debrief-row"><span>IMPACT VELOCITY (H):</span><span id="d-hvel">0.00 m/s</span></div>
+            <div class="debrief-row"><span>PEAK TEMPERATURE:</span><span id="d-temp">0 K</span></div>
+            <div class="debrief-row"><span>PEAK G-FORCE:</span><span id="d-g">0.0 G</span></div>
+            <div id="end-rating">---</div>
+            <div style="text-align: center; margin-top: 40px; color: #888; font-style: italic;" id="d-cause"></div>
+            <div style="text-align: center; margin-top: 50px;"><button class="btn" onclick="location.reload()">RETURN TO BASE</button></div>
+        </div>
     </div>
 </div>
 
 <script>
 /**
- * ============================================================================
- * JAAP SPACE: ADVANCED ORBITAL DESCENT ENGINE v11.8.2
- * Architect: Jaap
- * Vessel: Seahawk-1
- * * CORE FEATURES:
- * - 64-bit precision physics integration (RK4/Euler Hybrid)
- * - Procedural Volumetric Planet Rendering (Deep Space to Surface mapping)
- * - Advanced Thermodynamic heating and ablation mechanics
- * - Multi-octave Simplex Noise terrain generation
- * - Particle Systems with pooling and additive blending
- * - High-fidelity Avionics HUD
- * ============================================================================
+ * JAAP SPACE: ADVANCED AEROSPACE ENGINE v12.0
+ * Deep Space to Surface Procedural Transition Engine
+ * RK4 N-Body Physics, Aerodynamic & Thermodynamic integration.
  */
-"use strict";
 
-// ============================================================================
-// SYSTEM CONFIGURATION & PHYSICS CONSTANTS
-// ============================================================================
-const CFG = {
-    G: 6.67430e-11,       // Universal Gravitational Constant
-    R_GAS: 8.314,         // Ideal gas constant
-    MAX_DT: 0.05,         // Hard limit on delta-time to prevent physics explosion
-    ORBIT_START_ALT: 8000000, // 8,000 km starting altitude (Deep Space)
-    LOD_SPHERE_DIST: 3000000, // When to start showing surface features on sphere
-    LOD_TRANSITION: 200000,   // Transition from curved sphere to flat projection
-    SURFACE_WIDTH: 200000,    // 200km mapping plane width
-    DRAG_COEF: 0.85,          // Base drag coefficient for blunt body
-    SHIP_AREA: 18.5,          // Cross section area (m^2)
-    MAX_TEMP: 3200,           // Kelvin before structural failure
-    SAFE_V: 12.0,             // Safe vertical landing m/s
-    SAFE_H: 5.0,              // Safe horizontal landing m/s
-    SAFE_PITCH: 10.0,         // Safe tilt angle in degrees
-    TIME_WARP_MAX: 100        // Future implementation
-};
+// --- MATH & UTILS ---
+const PI = Math.PI; const TAU = PI * 2;
+const DEG2RAD = PI / 180; const RAD2DEG = 180 / PI;
+const G_CONST = 6.67430e-11;
+const R_GAS = 8.314;
 
-// ============================================================================
-// MASSIVE CELESTIAL DATABASE
-// ============================================================================
-const PLANETS = {
-    "Earth": {
-        color: "#2b82c9", atmos: "#87CEEB", ground: "#3c8b2f", ground2: "#8b6c42", 
-        clouds: true, cloudColor: "rgba(255,255,255,0.8)",
-        radius: 6371000, gravity: 9.807, atmPres: 101325, scaleH: 8500, temp: 288,
-        roughness: 0.5, craters: 0, safeMod: 1.0, type: "Terrestrial",
-        desc: "Dense nitrogen/oxygen atmosphere. Requires heavy aerobraking. Watch your heat shields."
-    },
-    "Mars": {
-        color: "#c1440e", atmos: "#e89d7b", ground: "#b03a0b", ground2: "#8c2e08",
-        clouds: true, cloudColor: "rgba(255, 200, 150, 0.3)",
-        radius: 3389500, gravity: 3.721, atmPres: 610, scaleH: 11100, temp: 210,
-        roughness: 0.75, craters: 0.5, safeMod: 1.1, type: "Terrestrial",
-        desc: "Thin CO2 atmosphere. Insufficient for full parachute landing. Propulsive descent required."
-    },
-    "Venus": {
-        color: "#e0c080", atmos: "#d69f38", ground: "#8a662e", ground2: "#5e451e",
-        clouds: true, cloudColor: "rgba(224, 192, 128, 0.9)",
-        radius: 6051800, gravity: 8.87, atmPres: 9300000, scaleH: 15900, temp: 737,
-        roughness: 0.4, craters: 0.1, safeMod: 0.7, type: "Terrestrial (Extreme)",
-        desc: "Crushing pressure and lead-melting heat. Aerocapture is extremely dangerous."
-    },
-    "Luna (Moon)": {
-        color: "#aaaaaa", atmos: "transparent", ground: "#888888", ground2: "#555555",
-        clouds: false, cloudColor: "transparent",
-        radius: 1737400, gravity: 1.62, atmPres: 0, scaleH: 0, temp: 250,
-        roughness: 0.9, craters: 1.0, safeMod: 1.3, type: "Satellite",
-        desc: "Pure vacuum descent. High crater density requires precise manual targeting."
-    },
-    "Titan": {
-        color: "#d4a84b", atmos: "#e6b840", ground: "#4a3c22", ground2: "#2e2515",
-        clouds: true, cloudColor: "rgba(212, 168, 75, 0.8)",
-        radius: 2574700, gravity: 1.352, atmPres: 146700, scaleH: 40000, temp: 94,
-        roughness: 0.3, craters: 0.1, safeMod: 1.4, type: "Satellite",
-        desc: "Thick smog and low gravity. You can essentially glide to the surface."
-    },
-    "Europa": {
-        color: "#b0c4de", atmos: "transparent", ground: "#d9e2ec", ground2: "#a0b8d6",
-        clouds: false, cloudColor: "transparent",
-        radius: 1560800, gravity: 1.314, atmPres: 0, scaleH: 0, temp: 102,
-        roughness: 0.2, craters: 0.05, safeMod: 1.2, type: "Ice Satellite",
-        desc: "Smooth ice crust. Vacuum environment. Beware of deep ice fissures."
-    },
-    "Io": {
-        color: "#e6e600", atmos: "#ffff99", ground: "#ccaa00", ground2: "#882200",
-        clouds: true, cloudColor: "rgba(255, 255, 0, 0.4)", // Sulfur plumes
-        radius: 1821600, gravity: 1.796, atmPres: 0.001, scaleH: 10000, temp: 130,
-        roughness: 0.8, craters: 0.2, safeMod: 1.1, type: "Volcanic Satellite",
-        desc: "Extremely volatile surface. Thin sulfur dioxide atmosphere. Target landing zones carefully."
-    },
-    "Enceladus": {
-        color: "#ffffff", atmos: "transparent", ground: "#f0f8ff", ground2: "#e6e6fa",
-        clouds: true, cloudColor: "rgba(255,255,255,0.2)", // Cryovolcanism
-        radius: 252100, gravity: 0.113, atmPres: 0, scaleH: 0, temp: 75,
-        roughness: 0.4, craters: 0.1, safeMod: 2.0, type: "Ice Satellite",
-        desc: "Microgravity environment. Descent takes a very long time. Watch for geysers."
-    },
-    "Pluto": {
-        color: "#ddb89f", atmos: "#1a1a2e", ground: "#b8957e", ground2: "#8c7260",
-        clouds: false, cloudColor: "transparent",
-        radius: 1188300, gravity: 0.62, atmPres: 1.0, scaleH: 50000, temp: 44,
-        roughness: 0.6, craters: 0.3, safeMod: 1.5, type: "Dwarf Planet",
-        desc: "Extremely low gravity and trace atmosphere."
-    },
-    "Kepler-186f": {
-        color: "#774455", atmos: "#883344", ground: "#522e3a", ground2: "#331c24",
-        clouds: true, cloudColor: "rgba(100, 50, 70, 0.6)",
-        radius: 7450000, gravity: 10.2, atmPres: 150000, scaleH: 7000, temp: 230,
-        roughness: 0.6, craters: 0.1, safeMod: 0.9, type: "Exoplanet",
-        desc: "Super-Earth in a red dwarf system. High gravity means high impact velocity risk."
-    },
-    "Gliese 581g": {
-        color: "#225544", atmos: "#338866", ground: "#113322", ground2: "#001100",
-        clouds: true, cloudColor: "rgba(50, 150, 100, 0.5)",
-        radius: 9500000, gravity: 12.5, atmPres: 250000, scaleH: 6000, temp: 260,
-        roughness: 0.7, craters: 0.2, safeMod: 0.8, type: "Exoplanet (Super-Earth)",
-        desc: "Massive rocky world. Crushing gravity. Bring a lot of fuel."
-    },
-    "Proxima Centauri b": {
-        color: "#aa7755", atmos: "#cc8855", ground: "#885533", ground2: "#442211",
-        clouds: true, cloudColor: "rgba(200, 150, 100, 0.4)",
-        radius: 6800000, gravity: 10.5, atmPres: 80000, scaleH: 9000, temp: 234,
-        roughness: 0.5, craters: 0.3, safeMod: 0.95, type: "Exoplanet",
-        desc: "Tidally locked. Extreme temperature gradients. Choose landing side wisely."
-    }
-};
-
-// ============================================================================
-// MATHEMATICS, VECTORS & UTILS
-// ============================================================================
-class Vec2 {
-    constructor(x=0, y=0) { this.x=x; this.y=y; }
-    set(x,y) { this.x=x; this.y=y; return this; }
-    add(v) { this.x+=v.x; this.y+=v.y; return this; }
-    sub(v) { this.x-=v.x; this.y-=v.y; return this; }
-    mult(s) { this.x*=s; this.y*=s; return this; }
-    div(s) { this.x/=s; this.y/=s; return this; }
-    magSq() { return this.x*this.x + this.y*this.y; }
+class Vec3 {
+    constructor(x=0,y=0,z=0) { this.x=x; this.y=y; this.z=z; }
+    set(x,y,z) { this.x=x; this.y=y; this.z=z; return this; }
+    add(v) { this.x+=v.x; this.y+=v.y; this.z+=v.z; return this; }
+    sub(v) { this.x-=v.x; this.y-=v.y; this.z-=v.z; return this; }
+    mult(s) { this.x*=s; this.y*=s; this.z*=s; return this; }
+    magSq() { return this.x*this.x + this.y*this.y + this.z*this.z; }
     mag() { return Math.sqrt(this.magSq()); }
-    norm() { let m=this.mag(); if(m>0){this.x/=m; this.y/=m;} return this; }
-    copy() { return new Vec2(this.x, this.y); }
-    dot(v) { return this.x*v.x + this.y*v.y; }
-    cross(v) { return this.x*v.y - this.y*v.x; }
-    rotate(angle) {
-        let c = Math.cos(angle), s = Math.sin(angle);
-        let nx = this.x * c - this.y * s;
-        let ny = this.x * s + this.y * c;
-        this.x = nx; this.y = ny; return this;
-    }
+    norm() { let m=this.mag(); if(m>0){this.x/=m; this.y/=m; this.z/=m;} return this; }
+    copy() { return new Vec3(this.x, this.y, this.z); }
+    dot(v) { return this.x*v.x + this.y*v.y + this.z*v.z; }
+    cross(v) { return new Vec3(this.y*v.z - this.z*v.y, this.z*v.x - this.x*v.z, this.x*v.y - this.y*v.x); }
 }
 
-const Util = {
-    clamp: (v, min, max) => Math.max(min, Math.min(max, v)),
-    lerp: (a, b, t) => a + (b - a) * t,
-    rad: (d) => d * Math.PI/180,
-    deg: (r) => r * 180/Math.PI,
+const Utils = {
+    clamp: (v,min,max) => Math.max(min, Math.min(max, v)),
+    lerp: (a,b,t) => a + (b-a)*t,
     formatNum: (n) => n.toLocaleString(undefined, {minimumFractionDigits:1, maximumFractionDigits:1}),
-    randomRange: (min, max) => Math.random() * (max - min) + min,
-    wrapAngle: (a) => { while(a > Math.PI) a -= Math.PI*2; while(a < -Math.PI) a += Math.PI*2; return a; }
+    wrapAngle: (a) => { while(a>PI) a-=TAU; while(a<-PI) a+=TAU; return a; },
+    randomRange: (min,max) => Math.random()*(max-min)+min
 };
 
-// ============================================================================
-// SIMPLEX NOISE ALGORITHM (Advanced 2D/3D generation)
-// ============================================================================
+// --- SIMPLEX NOISE (3D/4D implementation compressed) ---
 class SimplexNoise {
     constructor(seed=1) {
-        this.grad3 = [[1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],[1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],[0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]];
         this.p = new Uint8Array(256);
-        for (let i=0; i<256; i++) this.p[i] = Math.floor((seed * i * 16807) % 256);
+        for(let i=0;i<256;i++) this.p[i] = Math.floor((seed*i*16807)%256);
         this.perm = new Uint8Array(512);
-        this.permMod12 = new Uint8Array(512);
-        for (let i=0; i<512; i++) {
-            this.perm[i] = this.p[i & 255];
-            this.permMod12[i] = (this.perm[i] % 12);
-        }
+        for(let i=0;i<512;i++) this.perm[i] = this.p[i&255];
+        this.g3 = [[1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],[1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],[0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]];
     }
-    dot(g, x, y) { return g[0]*x + g[1]*y; }
-    dot3(g, x, y, z) { return g[0]*x + g[1]*y + g[2]*z; }
-    
-    noise2D(xin, yin) {
-        let n0, n1, n2;
-        const F2 = 0.5 * (Math.sqrt(3.0) - 1.0);
-        const G2 = (3.0 - Math.sqrt(3.0)) / 6.0;
-        let s = (xin + yin) * F2;
-        let i = Math.floor(xin + s);
-        let j = Math.floor(yin + s);
-        let t = (i + j) * G2;
-        let X0 = i - t; let Y0 = j - t;
-        let x0 = xin - X0; let y0 = yin - Y0;
-        let i1, j1;
-        if(x0 > y0) { i1=1; j1=0; } else { i1=0; j1=1; }
-        let x1 = x0 - i1 + G2; let y1 = y0 - j1 + G2;
-        let x2 = x0 - 1.0 + 2.0 * G2; let y2 = y0 - 1.0 + 2.0 * G2;
-        let ii = i & 255; let jj = j & 255;
-        let gi0 = this.permMod12[ii + this.perm[jj]];
-        let gi1 = this.permMod12[ii + i1 + this.perm[jj + j1]];
-        let gi2 = this.permMod12[ii + 1 + this.perm[jj + 1]];
-        let t0 = 0.5 - x0*x0 - y0*y0; if(t0<0) n0 = 0.0; else { t0 *= t0; n0 = t0 * t0 * this.dot(this.grad3[gi0], x0, y0); }
-        let t1 = 0.5 - x1*x1 - y1*y1; if(t1<0) n1 = 0.0; else { t1 *= t1; n1 = t1 * t1 * this.dot(this.grad3[gi1], x1, y1); }
-        let t2 = 0.5 - x2*x2 - y2*y2; if(t2<0) n2 = 0.0; else { t2 *= t2; n2 = t2 * t2 * this.dot(this.grad3[gi2], x2, y2); }
-        return 70.0 * (n0 + n1 + n2);
-    }
-
-    noise3D(xin, yin, zin) {
-        let n0, n1, n2, n3;
-        const F3 = 1.0/3.0; const G3 = 1.0/6.0;
-        let s = (xin+yin+zin)*F3;
-        let i = Math.floor(xin+s); let j = Math.floor(yin+s); let k = Math.floor(zin+s);
+    dot3(g,x,y,z) { return g[0]*x + g[1]*y + g[2]*z; }
+    noise3D(x,y,z) {
+        let n0,n1,n2,n3;
+        const F3 = 1.0/3.0, G3 = 1.0/6.0;
+        let s = (x+y+z)*F3;
+        let i = Math.floor(x+s), j = Math.floor(y+s), k = Math.floor(z+s);
         let t = (i+j+k)*G3;
-        let X0 = i-t; let Y0 = j-t; let Z0 = k-t;
-        let x0 = xin-X0; let y0 = yin-Y0; let z0 = zin-Z0;
-        let i1, j1, k1, i2, j2, k2;
+        let X0 = i-t, Y0 = j-t, Z0 = k-t;
+        let x0 = x-X0, y0 = y-Y0, z0 = z-Z0;
+        let i1,j1,k1, i2,j2,k2;
         if(x0>=y0) {
-            if(y0>=z0) { i1=1; j1=0; k1=0; i2=1; j2=1; k2=0; }
-            else if(x0>=z0) { i1=1; j1=0; k1=0; i2=1; j2=0; k2=1; }
-            else { i1=0; j1=0; k1=1; i2=1; j2=0; k2=1; }
+            if(y0>=z0) { i1=1;j1=0;k1=0; i2=1;j2=1;k2=0; }
+            else if(x0>=z0) { i1=1;j1=0;k1=0; i2=1;j2=0;k2=1; }
+            else { i1=0;j1=0;k1=1; i2=1;j2=0;k2=1; }
         } else {
-            if(y0<z0) { i1=0; j1=0; k1=1; i2=0; j2=1; k2=1; }
-            else if(x0<z0) { i1=0; j1=1; k1=0; i2=0; j2=1; k2=1; }
-            else { i1=0; j1=1; k1=0; i2=1; j2=1; k2=0; }
+            if(y0<z0) { i1=0;j1=0;k1=1; i2=0;j2=1;k2=1; }
+            else if(x0<z0) { i1=0;j1=1;k1=0; i2=0;j2=1;k2=1; }
+            else { i1=0;j1=1;k1=0; i2=1;j2=1;k2=0; }
         }
-        let x1 = x0 - i1 + G3; let y1 = y0 - j1 + G3; let z1 = z0 - k1 + G3;
-        let x2 = x0 - i2 + 2.0*G3; let y2 = y0 - j2 + 2.0*G3; let z2 = z0 - k2 + 2.0*G3;
-        let x3 = x0 - 1.0 + 3.0*G3; let y3 = y0 - 1.0 + 3.0*G3; let z3 = z0 - 1.0 + 3.0*G3;
-        let ii = i & 255; let jj = j & 255; let kk = k & 255;
-        let gi0 = this.permMod12[ii+this.perm[jj+this.perm[kk]]];
-        let gi1 = this.permMod12[ii+i1+this.perm[jj+j1+this.perm[kk+k1]]];
-        let gi2 = this.permMod12[ii+i2+this.perm[jj+j2+this.perm[kk+k2]]];
-        let gi3 = this.permMod12[ii+1+this.perm[jj+1+this.perm[kk+1]]];
-        let t0 = 0.6 - x0*x0 - y0*y0 - z0*z0; if(t0<0) n0=0.0; else { t0*=t0; n0 = t0*t0*this.dot3(this.grad3[gi0], x0, y0, z0); }
-        let t1 = 0.6 - x1*x1 - y1*y1 - z1*z1; if(t1<0) n1=0.0; else { t1*=t1; n1 = t1*t1*this.dot3(this.grad3[gi1], x1, y1, z1); }
-        let t2 = 0.6 - x2*x2 - y2*y2 - z2*z2; if(t2<0) n2=0.0; else { t2*=t2; n2 = t2*t2*this.dot3(this.grad3[gi2], x2, y2, z2); }
-        let t3 = 0.6 - x3*x3 - y3*y3 - z3*z3; if(t3<0) n3=0.0; else { t3*=t3; n3 = t3*t3*this.dot3(this.grad3[gi3], x3, y3, z3); }
+        let x1=x0-i1+G3, y1=y0-j1+G3, z1=z0-k1+G3;
+        let x2=x0-i2+2.0*G3, y2=y0-j2+2.0*G3, z2=z0-k2+2.0*G3;
+        let x3=x0-1.0+3.0*G3, y3=y0-1.0+3.0*G3, z3=z0-1.0+3.0*G3;
+        let ii=i&255, jj=j&255, kk=k&255;
+        let gi0 = this.perm[ii+this.perm[jj+this.perm[kk]]] % 12;
+        let gi1 = this.perm[ii+i1+this.perm[jj+j1+this.perm[kk+k1]]] % 12;
+        let gi2 = this.perm[ii+i2+this.perm[jj+j2+this.perm[kk+k2]]] % 12;
+        let gi3 = this.perm[ii+1+this.perm[jj+1+this.perm[kk+1]]] % 12;
+        let t0 = 0.6 - x0*x0 - y0*y0 - z0*z0; if(t0<0) n0=0; else { t0*=t0; n0=t0*t0*this.dot3(this.g3[gi0],x0,y0,z0); }
+        let t1 = 0.6 - x1*x1 - y1*y1 - z1*z1; if(t1<0) n1=0; else { t1*=t1; n1=t1*t1*this.dot3(this.g3[gi1],x1,y1,z1); }
+        let t2 = 0.6 - x2*x2 - y2*y2 - z2*z2; if(t2<0) n2=0; else { t2*=t2; n2=t2*t2*this.dot3(this.g3[gi2],x2,y2,z2); }
+        let t3 = 0.6 - x3*x3 - y3*y3 - z3*z3; if(t3<0) n3=0; else { t3*=t3; n3=t3*t3*this.dot3(this.g3[gi3],x3,y3,z3); }
         return 32.0*(n0+n1+n2+n3);
     }
-
-    fbm(x, y, octaves, persistence, lacunarity) {
-        let total = 0, freq = 1, amp = 1, maxVal = 0;
-        for(let i=0; i<octaves; i++) {
-            total += this.noise2D(x*freq, y*freq) * amp;
-            maxVal += amp; amp *= persistence; freq *= lacunarity;
-        }
-        return total / maxVal;
+    fbm3D(x,y,z, octaves=6, p=0.5, lac=2.0) {
+        let total=0, freq=1, amp=1, max=0;
+        for(let i=0;i<octaves;i++) { total += this.noise3D(x*freq,y*freq,z*freq)*amp; max+=amp; amp*=p; freq*=lac; }
+        return total/max;
     }
 }
 
-// ============================================================================
-// PROCEDURAL PLANET RENDERER (LOD System)
-// Handles rendering massive distances down to 1-meter resolution surface
-// ============================================================================
-class PlanetRenderer {
-    constructor(data, w, h) {
-        this.data = data; this.w = w; this.h = h;
-        this.seed = Math.random() * 10000;
-        this.noise = new SimplexNoise(this.seed);
-        
-        // --- High-Res Surface Map Generation (Phase 4 LOD) ---
-        this.pts = 16384; // Extremely dense array for high-detail terrain
-        this.terrain = new Float32Array(this.pts);
-        this.colors = new Uint8Array(this.pts); 
-        
-        this.generateSurface();
-        this.sphereRotation = 0;
-    }
+// --- DATABASE: CELESTIAL BODIES ---
+// Real physics values blended with gameplay scaled geometry
+const DB_PLANETS = {
+    "Earth": { r: 6371000, m: 5.972e24, g: 9.807, atmP: 101325, atmH: 8500, temp: 288, cBase: '#2b82c9', cLand: '#3c8b2f', cLand2: '#8b6c42', cAtm: '#87CEEB', rough: 0.5, craters: 0, clouds: true, safeV: 10, type: "Terrestrial" },
+    "Mars": { r: 3389500, m: 6.417e23, g: 3.721, atmP: 610, atmH: 11100, temp: 210, cBase: '#c1440e', cLand: '#b03a0b', cLand2: '#8c2e08', cAtm: '#e89d7b', rough: 0.8, craters: 0.6, clouds: true, safeV: 12, type: "Terrestrial" },
+    "Venus": { r: 6051800, m: 4.867e24, g: 8.87, atmP: 9300000, atmH: 15900, temp: 737, cBase: '#e0c080', cLand: '#8a662e', cLand2: '#5e451e', cAtm: '#d69f38', rough: 0.4, craters: 0.1, clouds: true, safeV: 8, type: "Extreme Terrestrial" },
+    "Luna": { r: 1737400, m: 7.342e22, g: 1.62, atmP: 0, atmH: 0, temp: 250, cBase: '#aaaaaa', cLand: '#888888', cLand2: '#555555', cAtm: 'transparent', rough: 0.9, craters: 1.0, clouds: false, safeV: 15, type: "Satellite" },
+    "Titan": { r: 2574700, m: 1.345e23, g: 1.352, atmP: 146700, atmH: 40000, temp: 94, cBase: '#d4a84b', cLand: '#4a3c22', cLand2: '#2e2515', cAtm: '#e6b840', rough: 0.3, craters: 0.1, clouds: true, safeV: 18, type: "Hydrocarbon Satellite" },
+    "Europa": { r: 1560800, m: 4.799e22, g: 1.314, atmP: 0, atmH: 0, temp: 102, cBase: '#b0c4de', cLand: '#d9e2ec', cLand2: '#a0b8d6', cAtm: 'transparent', rough: 0.2, craters: 0.05, clouds: false, safeV: 14, type: "Ice Satellite" },
+    "Kepler-186f": { r: 7450000, m: 1.0e25, g: 12.5, atmP: 250000, atmH: 7000, temp: 260, cBase: '#774455', cLand: '#522e3a', cLand2: '#331c24', cAtm: '#883344', rough: 0.7, craters: 0.2, clouds: true, safeV: 9, type: "Exoplanet" },
+    "Io": { r: 1821600, m: 8.931e22, g: 1.796, atmP: 0.001, atmH: 10000, temp: 130, cBase: '#e6e600', cLand: '#ccaa00', cLand2: '#882200', cAtm: '#ffff99', rough: 0.9, craters: 0.3, clouds: true, safeV: 12, type: "Volcanic Satellite" }
+};
 
-    generateSurface() {
-        let baseVar = 8000 * this.data.roughness;
+// --- RENDERER: DUAL LOD SYSTEM (Spherical -> Flat Terrain Map) ---
+class PlanetRenderer {
+    constructor(cfg, ctxMain, ctxBg, width, height) {
+        this.cfg = cfg; this.ctx = ctxMain; this.ctxBg = ctxBg;
+        this.w = width; this.h = height;
+        this.noise = new SimplexNoise(Math.random()*1000);
+        
+        // Settings for LOD transition
+        this.LOD_TRANS = 500000; // 500km altitude transition point
+        this.SURFACE_W = 400000; // 400km wide 2D mapping area
+        
+        // Generate High-Res 1D Heightmap for surface descent
+        this.pts = 32768; // Massive resolution array
+        this.terrain = new Float32Array(this.pts);
+        this.colors = new Uint8Array(this.pts);
+        
+        this.genTerrain();
+        this.rot = 0;
+    }
+    
+    genTerrain() {
+        let baseR = 12000 * this.cfg.rough;
         for(let i=0; i<this.pts; i++) {
-            let x = (i / this.pts) * 300; // Noise scale mapping
+            let x = (i/this.pts) * 500;
+            let h = this.noise.fbm3D(x, 0, 0, 8, 0.45, 2.1) * baseR;
+            h += this.noise.fbm3D(x*4, 100, 0, 4, 0.5, 2.0) * (baseR*0.1); // micro details
+            this.colors[i] = this.noise.noise3D(x*0.1, 50, 0) > 0 ? 1 : 0;
             
-            // FBM for baseline mountains
-            let h = this.noise.fbm(x, 0, 10, 0.45, 2.1) * baseVar;
-            
-            // Micro-detail FBM
-            h += this.noise.fbm(x*5, 100, 4, 0.5, 2.0) * (baseVar * 0.1);
-            
-            // Biome splitting
-            this.colors[i] = this.noise.noise2D(x*0.2, 50) > 0 ? 1 : 0;
-            
-            // Crater generation
-            if(this.data.craters > 0) {
-                let craterMod = 0;
-                for(let c=0; c<40; c++) {
-                    let cx = (this.noise.noise2D(c*11, 0) + 1)/2 * 300; 
-                    let r = (this.noise.noise2D(c*13, 10) + 1)/2 * 15 + 2;
-                    let depth = r * 400 * this.data.craters;
+            // Craters
+            if(this.cfg.craters > 0) {
+                for(let c=0; c<60; c++) {
+                    let cx = (this.noise.noise3D(c*11, 0, 0)+1)/2 * 500;
+                    let r = (this.noise.noise3D(c*13, 10, 0)+1)/2 * 20 + 2;
+                    let depth = r * 500 * this.cfg.craters;
                     let dist = Math.abs(x - cx);
                     if(dist < r) {
-                        let normDist = dist/r;
-                        // Cavity
-                        craterMod -= (Math.cos(normDist * Math.PI) + 1) * depth;
-                        // Raised rim
-                        if(normDist > 0.7) craterMod += Math.sin((normDist-0.7)*3.33 * Math.PI) * depth * 0.3;
+                        let nd = dist/r;
+                        h -= (Math.cos(nd*PI)+1) * depth; // Bowl
+                        if(nd>0.65) h += Math.sin((nd-0.65)*2.85*PI) * depth * 0.4; // Rim
                     }
                 }
-                h += craterMod;
             }
             this.terrain[i] = h;
         }
-
-        // Generate ONE flat landing pad area exactly in the center
-        this.padIdx = Math.floor(this.pts / 2);
-        this.padWidth = 200; // Array indices
-        let padH = this.terrain[this.padIdx];
-        
-        // Flatten terrain gradually towards pad to avoid sheer cliffs
-        for(let i = this.padIdx - this.padWidth*2; i < this.padIdx + this.padWidth*2; i++) {
-            if(i >= 0 && i < this.pts) {
-                if (Math.abs(i - this.padIdx) <= this.padWidth) {
-                    this.terrain[i] = padH;
-                    this.colors[i] = 2; // Pad color ID
-                } else {
-                    // Smooth transition
-                    let dist = Math.abs(i - this.padIdx) - this.padWidth;
-                    let blend = Util.clamp(dist / this.padWidth, 0, 1);
-                    this.terrain[i] = Util.lerp(padH, this.terrain[i], blend);
+        // Pad
+        this.padIdx = Math.floor(this.pts/2);
+        this.padW = 300;
+        let pAlt = this.terrain[this.padIdx];
+        for(let i=this.padIdx-this.padW*3; i<this.padIdx+this.padW*3; i++) {
+            if(i>=0 && i<this.pts) {
+                let dist = Math.abs(i - this.padIdx);
+                if(dist < this.padW) { this.terrain[i] = pAlt; this.colors[i] = 2; }
+                else {
+                    let blend = Utils.clamp((dist-this.padW)/(this.padW*2), 0, 1);
+                    this.terrain[i] = Utils.lerp(pAlt, this.terrain[i], blend);
                 }
             }
         }
     }
-
+    
     getHeight(worldX) {
-        let ratio = (worldX + CFG.SURFACE_WIDTH/2) / CFG.SURFACE_WIDTH;
-        if(ratio < 0 || ratio > 1) return 0; // Out of bounds
-        let idxF = ratio * (this.pts - 1);
-        let idx = Math.floor(idxF);
-        let frac = idxF - idx;
-        if(idx >= this.pts - 1) return this.terrain[this.pts-1];
-        return Util.lerp(this.terrain[idx], this.terrain[idx+1], frac);
+        let r = (worldX + this.SURFACE_W/2) / this.SURFACE_W;
+        if(r<0||r>1) return 0;
+        let iF = r * (this.pts-1), idx = Math.floor(iF), frac = iF - idx;
+        if(idx >= this.pts-1) return this.terrain[this.pts-1];
+        return Utils.lerp(this.terrain[idx], this.terrain[idx+1], frac);
     }
-
-    draw(ctx, shipAlt, camX, camY, zoom) {
-        // Dynamic planet rotation for visual flair in deep space
-        this.sphereRotation += 0.0005;
-
-        // ==============================================================
-        // PHASE 1: DEEP SPACE - SPHERICAL MAPPING
-        // ==============================================================
-        if (shipAlt > CFG.LOD_TRANSITION) {
-            let ratio = Util.clamp((shipAlt - CFG.LOD_TRANSITION) / (CFG.ORBIT_START_ALT - CFG.LOD_TRANSITION), 0, 1);
+    
+    drawSphere(camAlt, zoom) {
+        this.rot += 0.0002;
+        let appR = (this.cfg.r / (this.cfg.r + camAlt)) * this.h * 1.5;
+        let R = Math.max(20, appR);
+        let cy = this.h/2 + R + (camAlt * zoom * 0.01); // Pseudo-parallax pushing planet down
+        
+        let ctx = this.ctxBg;
+        ctx.save(); ctx.translate(this.w/2, cy);
+        
+        // Atmo Halo
+        if(this.cfg.atmP > 0) {
+            let aR = R * (1 + (this.cfg.atmH*4)/this.cfg.r);
+            let g = ctx.createRadialGradient(0,0,R*0.9, 0,0,aR);
+            g.addColorStop(0, this.cfg.cBase); g.addColorStop(0.3, this.cfg.cAtm); g.addColorStop(1, 'transparent');
+            ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0,0,aR, 0, TAU); ctx.fill();
+        }
+        
+        // Base Solid
+        ctx.fillStyle = this.cfg.cBase; ctx.beginPath(); ctx.arc(0,0,R, 0, TAU); ctx.fill();
+        
+        // Pseudo 3D Noise Texture mapping
+        if(R > 100) {
+            ctx.save(); ctx.beginPath(); ctx.arc(0,0,R, 0, TAU); ctx.clip();
+            let bands = Math.min(120, Math.floor(R/3));
+            ctx.lineWidth = (R*2)/bands + 1;
             
-            // Base visual size of the planet in space
-            let baseR = 1500; 
-            // Calculate screen space radius using projection geometry
-            let camDist = shipAlt + this.data.radius;
-            let apparentRadius = (this.data.radius / camDist) * this.h * 1.5; 
-            
-            let radius = Math.max(10, apparentRadius);
-            
-            // Distance pushes planet down so ship approach feels right
-            let visualY = radius + (shipAlt * zoom); 
-            
-            ctx.save();
-            // Center projection on screen
-            ctx.translate(this.w/2, this.h/2 + visualY); 
-            
-            // 1. Atmosphere Halo (Rayleigh scattering approximation)
-            if(this.data.atmPres > 0) {
-                let atmRadius = radius * (1 + (this.data.scaleH * 3) / this.data.radius);
-                let grad = ctx.createRadialGradient(0,0,radius*0.9, 0,0,atmRadius);
-                grad.addColorStop(0, this.data.color);
-                grad.addColorStop(0.2, this.data.atmos);
-                grad.addColorStop(1, 'transparent');
-                ctx.fillStyle = grad;
-                ctx.beginPath(); ctx.arc(0,0,atmRadius, 0, Math.PI*2); ctx.fill();
+            for(let i=0; i<bands; i++) {
+                let lat = (i/bands)*PI - PI/2;
+                let y = Math.sin(lat)*R, rL = Math.cos(lat)*R;
+                ctx.beginPath();
+                for(let px = -rL; px <= rL; px += Math.max(2, rL/15)) {
+                    let lon = Math.asin(Utils.clamp(px/rL, -1, 1)) + this.rot;
+                    let nx = Math.cos(lat)*Math.cos(lon), ny = Math.sin(lat), nz = Math.cos(lat)*Math.sin(lon);
+                    let n = this.noise.noise3D(nx*2, ny*2, nz*2);
+                    let dy = y + n*R*0.02;
+                    if(px===-rL) ctx.moveTo(px, dy); else ctx.lineTo(px, dy);
+                }
+                ctx.strokeStyle = this.noise.noise3D(lat*3,0,0)>0 ? this.cfg.cLand : this.cfg.cLand2;
+                ctx.globalAlpha = 0.8; ctx.stroke();
             }
-
-            // 2. Solid Base Sphere
-            ctx.fillStyle = this.data.color;
-            ctx.beginPath(); ctx.arc(0,0,radius, 0, Math.PI*2); ctx.fill();
             
-            // 3. Procedural Pseudo-3D Texture (Latitude bands)
-            // Only calculate this expensive geometry if planet is large enough to see details
-            if (radius > 50 && ratio < 0.95) {
-                ctx.save();
-                ctx.beginPath(); ctx.arc(0,0,radius, 0, Math.PI*2); ctx.clip(); // Mask to sphere
-                
-                let lines = Math.min(100, Math.floor(radius / 2)); // Detail scaling
-                ctx.lineWidth = (radius * 2) / lines + 1;
-                
-                for(let i=0; i<lines; i++) {
-                    let lat = (i / lines) * Math.PI - (Math.PI/2); // -90 to 90
-                    let yPos = Math.sin(lat) * radius;
-                    let rAtLat = Math.cos(lat) * radius; // Width of sphere at this latitude
-                    
-                    // Draw a textured band
+            // Clouds
+            if(this.cfg.clouds) {
+                ctx.fillStyle = '#fff';
+                for(let i=0; i<bands/2; i++) {
+                    let lat = (i/(bands/2))*PI - PI/2;
+                    let y = Math.sin(lat)*R, rL = Math.cos(lat)*R;
                     ctx.beginPath();
-                    for(let px = -rAtLat; px <= rAtLat; px += rAtLat/10) {
-                        // Map x/y to spherical coordinates for 3D noise mapping
-                        let lon = Math.asin(Util.clamp(px / rAtLat, -1, 1)) + this.sphereRotation;
-                        
-                        // 3D Cartesian coordinates on sphere surface
-                        let nx = Math.cos(lat) * Math.cos(lon);
-                        let ny = Math.sin(lat);
-                        let nz = Math.cos(lat) * Math.sin(lon);
-                        
-                        let nVal = this.noise.noise3D(nx*2, ny*2, nz*2);
-                        
-                        if(px === -rAtLat) ctx.moveTo(px, yPos + nVal*radius*0.02);
-                        else ctx.lineTo(px, yPos + nVal*radius*0.02);
+                    for(let px = -rL; px <= rL; px += Math.max(2, rL/10)) {
+                        let lon = Math.asin(Utils.clamp(px/rL, -1, 1)) + this.rot*1.5;
+                        let nx = Math.cos(lat)*Math.cos(lon), ny = Math.sin(lat), nz = Math.cos(lat)*Math.sin(lon);
+                        if(this.noise.noise3D(nx*5,ny*5,nz*5) > 0.4) ctx.arc(px, y, R*0.03, 0, TAU);
                     }
-                    // Color based on latitude noise to simulate biomes
-                    let bNoise = this.noise.noise2D(lat*3, 0);
-                    ctx.strokeStyle = bNoise > 0 ? this.data.ground : this.data.ground2;
-                    ctx.globalAlpha = 0.8;
-                    ctx.stroke();
+                    ctx.globalAlpha = 0.4; ctx.fill();
                 }
-
-                // 4. Cloud Layer
-                if(this.data.clouds) {
-                    ctx.fillStyle = this.data.cloudColor;
-                    for(let i=0; i<lines/2; i++) {
-                        let lat = (i / (lines/2)) * Math.PI - (Math.PI/2);
-                        let yPos = Math.sin(lat) * radius;
-                        let rAtLat = Math.cos(lat) * radius;
-                        
-                        ctx.beginPath();
-                        for(let px = -rAtLat; px <= rAtLat; px += rAtLat/5) {
-                            let lon = Math.asin(Util.clamp(px / rAtLat, -1, 1)) + (this.sphereRotation * 1.5); // Clouds move faster
-                            let nx = Math.cos(lat) * Math.cos(lon);
-                            let ny = Math.sin(lat);
-                            let nz = Math.cos(lat) * Math.sin(lon);
-                            
-                            let nVal = this.noise.noise3D(nx*4, ny*4, nz*4);
-                            if(nVal > 0.3) {
-                                ctx.arc(px, yPos, radius*0.05, 0, Math.PI*2);
-                            }
-                        }
-                        ctx.globalAlpha = 0.5;
-                        ctx.fill();
-                    }
-                }
-                ctx.restore();
             }
-
-            // 5. Orbital Terminator (Shadow side)
-            let shadowGrad = ctx.createLinearGradient(radius*0.3, -radius, radius, radius);
-            shadowGrad.addColorStop(0, 'rgba(0,0,0,0)');
-            shadowGrad.addColorStop(0.5, 'rgba(0,0,0,0.6)');
-            shadowGrad.addColorStop(1, 'rgba(0,0,0,0.95)');
-            ctx.fillStyle = shadowGrad;
-            ctx.beginPath(); ctx.arc(0,0,radius+1, 0, Math.PI*2); ctx.fill();
-
             ctx.restore();
-            return;
         }
-
-        // ==============================================================
-        // PHASE 2: DESCENT / SURFACE - FLAT PROJECTION
-        // ==============================================================
-        ctx.save();
-        ctx.translate(this.w/2, this.h/2);
-        ctx.scale(zoom, zoom);
-        ctx.translate(-camX, -camY);
-
-        // 1. Dynamic Atmospheric Skybox
-        let density = 0;
-        if(this.data.atmPres > 0) density = Math.exp(-shipAlt / this.data.scaleH);
         
-        ctx.save();
-        ctx.setTransform(1,0,0,1,0,0); // Reset transform to fill screen
-        if (density > 0) {
-            let grad = ctx.createLinearGradient(0,0,0,this.h);
-            grad.addColorStop(0, '#000'); // Space
-            
-            // As we get lower, the sky color shifts and brightens
-            let colorRatio = Util.clamp(density * 2.5, 0, 1);
-            let rC = parseInt(this.data.atmos.slice(1,3), 16);
-            let gC = parseInt(this.data.atmos.slice(3,5), 16);
-            let bC = parseInt(this.data.atmos.slice(5,7), 16);
-            
-            grad.addColorStop(colorRatio, `rgba(${rC},${gC},${bC},${colorRatio})`);
-            grad.addColorStop(1, this.data.atmos);
-            
-            ctx.fillStyle = grad;
-            ctx.globalAlpha = Util.clamp(density * 1.5, 0, 1);
-            ctx.fillRect(0,0,this.w,this.h);
-        }
+        // Shadow Terminator
+        let sg = ctx.createLinearGradient(R*0.2, -R, R, R);
+        sg.addColorStop(0, 'rgba(0,0,0,0)'); sg.addColorStop(0.6, 'rgba(0,0,0,0.7)'); sg.addColorStop(1, '#000');
+        ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(0,0,R+1, 0, TAU); ctx.fill();
+        
         ctx.restore();
-
-        // 2. Procedural Terrain Rendering
-        // Optimization: Calculate rendering window based on zoom and camera pos
-        let viewW = (this.w / zoom) * 1.5; 
-        let sX = camX - viewW/2;
-        let eX = camX + viewW/2;
+    }
+    
+    drawSurface(camAlt, camX, camY, zoom) {
+        let ctx = this.ctx;
+        ctx.save(); ctx.translate(this.w/2, this.h/2); ctx.scale(zoom, zoom); ctx.translate(-camX, -camY);
         
-        ctx.lineWidth = 4;
-        ctx.lineJoin = 'round';
+        // Dynamic Sky Scattering
+        if(this.cfg.atmP > 0) {
+            let dens = Math.exp(-Math.max(0,camAlt) / this.cfg.atmH);
+            ctx.save(); ctx.setTransform(1,0,0,1,0,0);
+            let g = ctx.createLinearGradient(0,0,0,this.h);
+            g.addColorStop(0, '#000');
+            let cr = Utils.clamp(dens*2.5, 0, 1);
+            g.addColorStop(cr, this.cfg.cAtm); g.addColorStop(1, this.cfg.cAtm);
+            ctx.fillStyle = g; ctx.globalAlpha = Utils.clamp(dens*1.5, 0, 1);
+            ctx.fillRect(0,0,this.w,this.h);
+            ctx.restore();
+        }
         
-        // Chunk rendering logic
-        let renderPath = (targetColorId, fillColor, strokeColor) => {
-            ctx.fillStyle = fillColor; ctx.strokeStyle = strokeColor;
-            ctx.beginPath();
-            let started = false;
-            let firstX = 0, lastX = 0;
-            
-            // Loop through pre-calculated points
-            let step = Math.max(1, Math.floor(this.pts / (viewW * zoom))); // Dynamic LOD step
+        // Terrain rendering with aggressive culling
+        let vW = (this.w/zoom)*1.5, sX = camX - vW/2, eX = camX + vW/2;
+        ctx.lineWidth = 4; ctx.lineJoin = 'round';
+        
+        let drawPass = (cID, fC, sC) => {
+            ctx.fillStyle = fC; ctx.strokeStyle = sC; ctx.beginPath();
+            let started = false, fX=0, lX=0;
+            let step = Math.max(1, Math.floor(this.pts / (vW*zoom))); // Dynamic LOD
             
             for(let i=0; i<this.pts; i+=step) {
-                if(this.colors[i] !== targetColorId) continue;
+                if(this.colors[i]!==cID) continue;
+                let px = -this.SURFACE_W/2 + (i/this.pts)*this.SURFACE_W;
+                if(px<sX || px>eX) continue;
+                let py = -this.terrain[i];
+                if(!started) { ctx.moveTo(px,py); started=true; fX=px; }
+                else { ctx.lineTo(px,py); lX=px; }
                 
-                let pX = -CFG.SURFACE_WIDTH/2 + (i / this.pts) * CFG.SURFACE_WIDTH;
-                if(pX < sX || pX > eX) continue; // Culling
-                let pY = -this.terrain[i];
-                
-                if(!started) { ctx.moveTo(pX, pY); started=true; firstX = pX; }
-                else { ctx.lineTo(pX, pY); lastX = pX; }
-                
-                // Close shape if next point changes color or we hit the end
-                let nextI = Math.min(i+step, this.pts-1);
-                if(this.colors[nextI] !== targetColorId) {
-                    ctx.lineTo(lastX, 10000); ctx.lineTo(firstX, 10000);
-                    ctx.closePath(); ctx.fill(); ctx.stroke();
-                    ctx.beginPath(); started = false;
+                let nI = Math.min(i+step, this.pts-1);
+                if(this.colors[nI]!==cID) {
+                    ctx.lineTo(lX, 20000); ctx.lineTo(fX, 20000); ctx.closePath(); ctx.fill(); ctx.stroke();
+                    ctx.beginPath(); started=false;
                 }
             }
-            if(started) {
-                ctx.lineTo(lastX, 10000); ctx.lineTo(firstX, 10000);
-                ctx.closePath(); ctx.fill(); ctx.stroke();
-            }
+            if(started) { ctx.lineTo(lX, 20000); ctx.lineTo(fX, 20000); ctx.closePath(); ctx.fill(); ctx.stroke(); }
         };
-
-        // Render Biomes
-        renderPath(0, this.data.ground, '#111');
-        renderPath(1, this.data.ground2, '#111');
         
-        // 3. Draw SEAHAWK Landing Zone
-        let padWorldX = -CFG.SURFACE_WIDTH/2 + (this.padIdx / this.pts) * CFG.SURFACE_WIDTH;
-        let padWorldY = -this.terrain[this.padIdx];
-        let padWorldW = (this.padWidth*2 / this.pts) * CFG.SURFACE_WIDTH;
+        drawPass(0, this.cfg.cLand, '#111');
+        drawPass(1, this.cfg.cLand2, '#111');
         
-        // Pad Base
-        ctx.fillStyle = '#222'; ctx.strokeStyle = var(--seahawk-green);
-        ctx.fillRect(padWorldX - padWorldW/2, padWorldY, padWorldW, 20);
-        ctx.strokeRect(padWorldX - padWorldW/2, padWorldY, padWorldW, 20);
+        // Pad
+        let pX = -this.SURFACE_W/2 + (this.padIdx/this.pts)*this.SURFACE_W;
+        let pY = -this.terrain[this.padIdx];
+        let pW = (this.padW*2/this.pts)*this.SURFACE_W;
         
-        // Pad Markings
-        ctx.fillStyle = var(--seahawk-green);
-        ctx.fillRect(padWorldX - padWorldW/2 + 10, padWorldY + 5, padWorldW - 20, 2);
+        ctx.fillStyle = '#222'; ctx.strokeStyle = var(--pri);
+        ctx.fillRect(pX-pW/2, pY, pW, 30); ctx.strokeRect(pX-pW/2, pY, pW, 30);
         
-        // Pad Beacons (Blinking)
-        if (Date.now() % 1000 < 500) {
-            ctx.fillStyle = '#0ff'; ctx.shadowBlur = 40; ctx.shadowColor = '#0ff';
-            ctx.beginPath(); ctx.arc(padWorldX - padWorldW/2 + 5, padWorldY-10, 8, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(padWorldX + padWorldW/2 - 5, padWorldY-10, 8, 0, Math.PI*2); ctx.fill();
+        // Beacon lights
+        if(Date.now()%1000<500) {
+            ctx.fillStyle = '#0ff'; ctx.shadowBlur = 50; ctx.shadowColor = '#0ff';
+            ctx.beginPath(); ctx.arc(pX-pW/2+10, pY-15, 10, 0, TAU); ctx.fill();
+            ctx.beginPath(); ctx.arc(pX+pW/2-10, pY-15, 10, 0, TAU); ctx.fill();
             ctx.shadowBlur = 0;
         }
         
-        // Inner Target Circle
-        ctx.strokeStyle = '#0ff'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.ellipse(padWorldX, padWorldY, 50, 10, 0, 0, Math.PI*2); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(padWorldX, padWorldY-10); ctx.lineTo(padWorldX, padWorldY+10); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(padWorldX-10, padWorldY); ctx.lineTo(padWorldX+10, padWorldY); ctx.stroke();
-
+        ctx.strokeStyle = '#0ff'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.ellipse(pX, pY, 80, 20, 0, 0, TAU); ctx.stroke();
+        
         ctx.restore();
     }
 }
 
-// ============================================================================
-// PARTICLE & VFX ENGINE (High Performance Pooling)
-// ============================================================================
-class ParticleEngine {
+// --- PARTICLE SYSTEM (Optimized Array Pool) ---
+class VFX {
     constructor() {
-        this.poolSize = 4000;
-        this.p = new Array(this.poolSize);
-        for(let i=0; i<this.poolSize; i++) {
-            this.p[i] = { active: false, x:0, y:0, vx:0, vy:0, life:0, maxLife:1, c:'', s:1, type:0 };
-        }
-        this.idx = 0;
-        
-        // Type Enums: 0=Thrust, 1=RCS, 2=Plasma, 3=Explosion, 4=Smoke
+        this.max = 6000; this.idx = 0;
+        this.p = new Array(this.max);
+        for(let i=0; i<this.max; i++) this.p[i] = { a:false, x:0,y:0, vx:0,vy:0, l:0, ml:1, c:'#fff', s:1, t:0 };
     }
-
-    getParticle() {
-        for(let i=0; i<this.poolSize; i++) {
-            this.idx = (this.idx + 1) % this.poolSize;
-            if(!this.p[this.idx].active) return this.p[this.idx];
-        }
-        return this.p[this.idx]; // Overwrite oldest if full
-    }
-
-    emit(x, y, vx, vy, typeStr) {
-        let cnt = typeStr === 'explosion' ? 150 : typeStr === 'plasma' ? 3 : typeStr === 'thrust' ? 5 : 2;
-        
+    emit(x,y,vx,vy,type) {
+        let cnt = type==='exp'?200: type==='plasma'?4: type==='smoke'?3: 6;
         for(let i=0; i<cnt; i++) {
-            let p = this.getParticle();
-            p.active = true; p.x = x; p.y = y;
-            
-            if(typeStr === 'thrust') {
-                p.type = 0;
-                p.c = Math.random() > 0.5 ? '#0ff' : '#fff'; 
-                p.s = Util.randomRange(3, 8);
-                p.vx = vx + Util.randomRange(-30, 30); p.vy = vy + Util.randomRange(-30, 30);
-                p.life = p.maxLife = Util.randomRange(0.1, 0.4);
-            } 
-            else if (typeStr === 'rcs') {
-                p.type = 1;
-                p.c = '#fff'; p.s = 2; 
-                p.vx = vx + Util.randomRange(-10, 10); p.vy = vy + Util.randomRange(-10, 10); 
-                p.life = p.maxLife = 0.2;
-            } 
-            else if (typeStr === 'plasma') {
-                p.type = 2;
-                let r = Math.random();
-                p.c = r > 0.6 ? '#ffaa00' : r > 0.3 ? '#ff3300' : '#ffffff';
-                p.s = Util.randomRange(5, 15);
-                p.vx = vx + Util.randomRange(-10, 10); p.vy = vy + Util.randomRange(-10, 10);
-                p.life = p.maxLife = Util.randomRange(0.2, 0.8);
-            } 
-            else if (typeStr === 'explosion') {
-                p.type = 3;
-                let cols = ['#ff0000','#ff8800','#ffff00','#ffffff', '#444444'];
-                p.c = cols[Math.floor(Math.random()*cols.length)];
-                p.s = Util.randomRange(10, 40);
-                let a = Math.random() * Math.PI * 2;
-                let v = Math.random() * 500;
-                p.vx = Math.cos(a)*v; p.vy = Math.sin(a)*v;
-                p.life = p.maxLife = Util.randomRange(1.0, 3.0);
-            }
-            else if (typeStr === 'smoke') {
-                p.type = 4;
-                p.c = '#888'; p.s = Util.randomRange(10, 30);
-                p.vx = vx + Util.randomRange(-20, 20); p.vy = vy + Util.randomRange(-20, 20);
-                p.life = p.maxLife = Util.randomRange(1.0, 2.0);
-            }
+            this.idx = (this.idx+1)%this.max;
+            let p = this.p[this.idx];
+            p.a=true; p.x=x; p.y=y;
+            if(type==='thrust') { p.t=0; p.c=Math.random()>0.5?'#0ff':'#fff'; p.s=Utils.randomRange(4,10); p.vx=vx+Utils.randomRange(-40,40); p.vy=vy+Utils.randomRange(-40,40); p.l=p.ml=Utils.randomRange(0.1,0.5); }
+            else if(type==='rcs') { p.t=1; p.c='#fff'; p.s=3; p.vx=vx+Utils.randomRange(-15,15); p.vy=vy+Utils.randomRange(-15,15); p.l=p.ml=0.25; }
+            else if(type==='plasma') { p.t=2; let r=Math.random(); p.c=r>0.6?'#fa0':r>0.3?'#f30':'#fff'; p.s=Utils.randomRange(8,20); p.vx=vx+Utils.randomRange(-15,15); p.vy=vy+Utils.randomRange(-15,15); p.l=p.ml=Utils.randomRange(0.2,0.8); }
+            else if(type==='exp') { p.t=3; let cols=['#f00','#f80','#ff0','#fff','#444']; p.c=cols[Math.floor(Math.random()*cols.length)]; p.s=Utils.randomRange(15,60); let a=Math.random()*TAU, v=Math.random()*800; p.vx=Math.cos(a)*v; p.vy=Math.sin(a)*v; p.l=p.ml=Utils.randomRange(1.5,4.0); }
+            else if(type==='smoke') { p.t=4; p.c='#666'; p.s=Utils.randomRange(20,50); p.vx=vx+Utils.randomRange(-30,30); p.vy=vy+Utils.randomRange(-30,30); p.l=p.ml=Utils.randomRange(2.0,4.0); }
         }
     }
-
     update(dt) {
-        for(let i=0; i<this.poolSize; i++) {
-            let p = this.p[i];
-            if(!p.active) continue;
-            
-            p.x += p.vx * dt; p.y += p.vy * dt;
-            p.life -= dt;
-            
-            if(p.type === 4 || p.type === 3) {
-                p.s += dt * 10; // Expand smoke/explosions
-                p.vx *= 0.95; p.vy *= 0.95; // Drag
-            }
-            
-            if(p.life <= 0) p.active = false;
+        for(let i=0;i<this.max;i++) {
+            let p=this.p[i]; if(!p.a) continue;
+            p.x+=p.vx*dt; p.y+=p.vy*dt; p.l-=dt;
+            if(p.t===3 || p.t===4) { p.s+=dt*15; p.vx*=0.96; p.vy*=0.96; }
+            if(p.l<=0) p.a=false;
         }
     }
-
-    draw(ctx, camX, camY, zoom) {
-        ctx.save();
-        ctx.translate(window.innerWidth/2, window.innerHeight/2);
-        ctx.scale(zoom, zoom);
-        ctx.translate(-camX, -camY);
-        
-        ctx.globalCompositeOperation = 'lighter';
-        
-        for(let i=0; i<this.poolSize; i++) {
-            let p = this.p[i];
-            if(!p.active) continue;
-            
-            if(p.type === 4 || p.c === '#444444') ctx.globalCompositeOperation = 'source-over'; // Smoke shouldn't glow
-            else ctx.globalCompositeOperation = 'lighter';
-
-            let a = Math.max(0, p.life / p.maxLife);
-            ctx.globalAlpha = a; ctx.fillStyle = p.c;
-            ctx.beginPath(); ctx.arc(p.x, p.y, p.s * a, 0, Math.PI*2); ctx.fill();
+    draw(ctx, cX, cY, z) {
+        ctx.save(); ctx.translate(window.innerWidth/2, window.innerHeight/2); ctx.scale(z,z); ctx.translate(-cX,-cY);
+        for(let i=0;i<this.max;i++) {
+            let p=this.p[i]; if(!p.a) continue;
+            ctx.globalCompositeOperation = (p.t===4 || p.c==='#444') ? 'source-over' : 'lighter';
+            let alpha = Math.max(0, p.l/p.ml);
+            ctx.globalAlpha = alpha; ctx.fillStyle = p.c;
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.s*alpha, 0, TAU); ctx.fill();
         }
         ctx.restore();
     }
 }
 
-// ============================================================================
-// SPACECRAFT PHYSICS, AVIONICS & SYSTEMS
-// ============================================================================
-class Ship {
+// --- VESSEL PHYSICS & SYSTEMS ---
+class Vessel {
     constructor() { this.reset(); }
-    
     reset() {
-        // High orbit initial state
-        this.pos = new Vec2(0, -CFG.ORBIT_START_ALT);
-        // Orbital injection velocity calculation
-        let vOrbital = Math.sqrt(CFG.G * 5.97e24 / (6371000 + CFG.ORBIT_START_ALT)) * 1.5; // Artificial boost for gameplay
-        this.vel = new Vec2(4500, 200); 
-        this.accel = new Vec2(0,0);
+        this.pos = new Vec3(0, -9000000, 0); // High orbit 9,000 km
+        this.vel = new Vec3(6500, 0, 0); // Orbital injection velocity
+        this.acc = new Vec3(0,0,0);
+        this.angle = PI/2; this.aVel = 0;
         
-        this.angle = Math.PI/2; // Pointing prograde initially
-        this.aVel = 0;
+        // Mass in kg
+        this.mDry = 12500; 
+        this.fuel = 45000; this.mFuel = 45000;
+        this.rcs = 5000; this.mRcs = 5000;
         
-        // Mass specifications (Seahawk-1 Heavy)
-        this.massDry = 8500;
-        this.fuel = 25000; this.maxFuel = 25000;
-        this.rcs = 3000; this.maxRcs = 3000;
+        // Propulsion
+        this.T_main = 1850000; // 1.85 MN
+        this.T_rcs = 85000;
+        this.isp = 320; // Specific impulse
+        this.burnRate = this.T_main / (this.isp * 9.81);
+        this.rcsRate = this.T_rcs / (250 * 9.81);
         
-        // Engine specs
-        this.thrustM = 950000; // Main Engine Newtons (950 kN)
-        this.thrustR = 40000;  // RCS Newtons (40 kN)
-        this.burnM = 150;      // kg/s consumption
-        this.burnR = 25;       // kg/s consumption
-        
-        // Thermal specs
+        // Aero/Thermal
+        this.area = 25.5;
+        this.Cd = 0.85;
         this.temp = 293;
-        this.heatCap = 450000; // Joules/Kelvin
+        this.hCap = 650000; // Joules/K
         
-        // Controls
-        this.ctrl = { thrust: false, left: false, right: false, cw: false, ccw: false };
-        this.crashed = false; this.landed = false;
-        
-        this.maxGSustained = 1.0;
-        
-        // Telemetry history for graphing
-        this.telemetry = [];
+        this.ctrl = { t:0, l:0, r:0, cw:0, ccw:0 };
+        this.state = 'FLYING'; // FLYING, LANDED, CRASHED
+        this.log = [];
+        this.maxG = 1.0;
     }
     
-    getMass() { return this.massDry + this.fuel + this.rcs; }
+    getMass() { return this.mDry + this.fuel + this.rcs; }
     
-    update(dt, planet, altitude) {
-        if(this.crashed || this.landed) return;
+    update(dt, pl, rAlt) {
+        if(this.state !== 'FLYING') return { q:0, g:0, mach:0 };
         
-        this.accel.set(0,0);
-        let aAccel = 0;
-        let mass = this.getMass();
+        this.acc.set(0,0,0); let aAcc = 0; let m = this.getMass();
+        let absAlt = -this.pos.y;
         
-        // 1. Gravity (Newtonian inverse square)
-        let rRatio = planet.radius / (planet.radius + Math.max(0, altitude));
-        let gForceY = planet.gravity * (rRatio * rRatio);
-        this.accel.y += gForceY;
+        // Newtonian Gravity
+        let rRatio = pl.r / (pl.r + Math.max(0, absAlt));
+        this.acc.y += pl.g * (rRatio*rRatio);
         
-        // 2. Aerodynamics (Drag & Heating)
-        let q = 0; // Dynamic pressure
-        if(planet.atmPres > 0 && planet.scaleH > 0 && altitude > 0) {
-            let rho0 = planet.atmPres / (CFG.R_GAS * planet.temp);
-            let rho = rho0 * Math.exp(-altitude / planet.scaleH);
-            
+        // Aerodynamics
+        let q = 0, mach = 0, rho = 0;
+        if(pl.atmP > 0 && absAlt > 0) {
+            rho = (pl.atmP / (R_GAS * pl.temp)) * Math.exp(-absAlt / pl.atmH);
             let vSq = this.vel.magSq();
-            if(vSq > 1.0) {
+            if(vSq > 1) {
                 let spd = Math.sqrt(vSq);
-                q = 0.5 * rho * vSq; // Pascals
+                let speedOfSound = Math.sqrt(1.4 * 287 * pl.temp); // Approx air
+                mach = spd / speedOfSound;
+                q = 0.5 * rho * vSq;
                 
-                // Drag Force
-                let dragF = q * CFG.DRAG_COEF * CFG.SHIP_AREA;
+                // Mach drag curve modifier
+                let cdMod = mach > 0.8 && mach < 1.2 ? 1.5 : mach > 1.2 ? 1.2 : 1.0;
+                let dragF = q * (this.Cd * cdMod) * this.area;
                 let dDir = this.vel.copy().norm().mult(-1);
-                this.accel.add(dDir.mult(dragF / mass));
+                this.acc.add(dDir.mult(dragF / m));
                 
-                // Convective Heating (Sutton-Graves approximation)
-                let heating = 1.83e-4 * Math.sqrt(rho) * Math.pow(spd, 3) * CFG.SHIP_AREA;
-                this.temp += (heating * dt) / this.heatCap;
+                // Heating (Sutton-Graves)
+                let heat = 1.83e-4 * Math.sqrt(rho) * Math.pow(spd, 3) * this.area;
+                this.temp += (heat * dt) / this.hCap;
                 
-                // Aerodynamic instability (forces ship to face prograde/retrograde if moving fast in thick atmo)
-                if(q > 5000) {
-                    let velAngle = Math.atan2(this.vel.y, this.vel.x) + Math.PI/2;
-                    let angleDiff = Util.wrapAngle(this.angle - velAngle);
-                    // If moving forward or backward, aerodynamics pull it straight
-                    if(Math.abs(angleDiff) < Math.PI/2) aAccel -= angleDiff * (q / 100000); // Prograde stable
-                    else aAccel -= Util.wrapAngle(this.angle - (velAngle+Math.PI)) * (q / 100000); // Retrograde stable
+                // Aero-stabilization (ships point prograde/retrograde in thick air)
+                if(q > 2000) {
+                    let vA = Math.atan2(this.vel.y, this.vel.x) + PI/2;
+                    let aD = Utils.wrapAngle(this.angle - vA);
+                    if(Math.abs(aD) < PI/2) aAcc -= aD * (q/50000);
+                    else aAcc -= Utils.wrapAngle(this.angle - (vA+PI)) * (q/50000);
                 }
             }
         }
         
-        // Radiative Cooling (Stefan-Boltzmann)
-        let emiss = 0.9;
-        let sigma = 5.67e-8;
-        let cooling = emiss * sigma * CFG.SHIP_AREA * (Math.pow(this.temp, 4) - Math.pow(planet.temp, 4));
-        this.temp -= (cooling * dt) / this.heatCap;
-        if(this.temp < planet.temp) this.temp = planet.temp;
+        // Cooling
+        let cool = 0.9 * 5.67e-8 * this.area * (Math.pow(this.temp, 4) - Math.pow(pl.temp, 4));
+        this.temp -= (cool*dt)/this.hCap;
+        if(this.temp < pl.temp) this.temp = pl.temp;
         
-        // 3. Propulsion Integration
-        if(this.ctrl.thrust && this.fuel > 0) {
-            let dir = new Vec2(Math.sin(this.angle), -Math.cos(this.angle));
-            this.accel.add(dir.mult(this.thrustM / mass));
-            this.fuel -= this.burnM * dt;
-            if(this.fuel < 0) this.fuel = 0;
+        // Propulsion
+        if(this.ctrl.t && this.fuel > 0) {
+            let dir = new Vec3(Math.sin(this.angle), -Math.cos(this.angle), 0);
+            this.acc.add(dir.mult(this.T_main / m));
+            this.fuel -= this.burnRate * dt;
         }
-        
         if(this.rcs > 0) {
-            let rPwr = this.thrustR / mass;
-            let burn = this.burnR * dt;
-            if(this.ctrl.left) { this.accel.add(new Vec2(-Math.cos(this.angle), -Math.sin(this.angle)).mult(rPwr)); this.rcs-=burn; }
-            if(this.ctrl.right) { this.accel.add(new Vec2(Math.cos(this.angle), Math.sin(this.angle)).mult(rPwr)); this.rcs-=burn; }
-            if(this.ctrl.cw) { aAccel += 4.0; this.rcs-=burn; }
-            if(this.ctrl.ccw) { aAccel -= 4.0; this.rcs-=burn; }
+            let rp = this.T_rcs / m; let br = this.rcsRate * dt;
+            if(this.ctrl.l) { this.acc.add(new Vec3(-Math.cos(this.angle), -Math.sin(this.angle),0).mult(rp)); this.rcs-=br; }
+            if(this.ctrl.r) { this.acc.add(new Vec3(Math.cos(this.angle), Math.sin(this.angle),0).mult(rp)); this.rcs-=br; }
+            if(this.ctrl.cw) { aAcc += 5.0; this.rcs-=br; }
+            if(this.ctrl.ccw) { aAcc -= 5.0; this.rcs-=br; }
         }
-        if(this.rcs < 0) this.rcs = 0;
         
-        // 4. Kinematic Integration (Euler)
-        this.vel.add(this.accel.copy().mult(dt));
+        // Integrate
+        this.vel.add(this.acc.copy().mult(dt));
         this.pos.add(this.vel.copy().mult(dt));
         
-        this.aVel += aAccel * dt;
-        this.aVel *= 0.95; // Gyroscopic dampening
-        this.angle += this.aVel * dt;
-        this.angle = Util.wrapAngle(this.angle);
+        this.aVel += aAcc * dt; this.aVel *= 0.96;
+        this.angle = Utils.wrapAngle(this.angle + this.aVel*dt);
         
-        // Metrics
-        let currentG = this.accel.mag() / 9.81;
-        if(currentG > this.maxGSustained && !this.crashed) this.maxGSustained = currentG;
+        let gForce = this.acc.mag() / 9.81;
+        if(gForce > this.maxG) this.maxG = gForce;
         
-        if(this.temp > CFG.MAX_TEMP) {
-            this.crashed = true;
-            this.failReason = "HULL INTEGRITY COMPROMISED DUE TO EXTREME THERMAL STRESS.";
-        }
+        if(this.temp > 3500) { this.state = 'CRASHED'; this.fReason = 'THERMAL HULL FAILURE'; }
+        if(gForce > 20) { this.state = 'CRASHED'; this.fReason = 'G-FORCE STRUCTURAL SHEAR'; }
         
-        // Save telemetry
-        if(Math.random() < 0.1) { // 10hz recording
-            this.telemetry.push({ alt: altitude, vel: this.vel.mag() });
-            if(this.telemetry.length > 200) this.telemetry.shift();
-        }
+        this.fuel = Math.max(0, this.fuel); this.rcs = Math.max(0, this.rcs);
         
-        return { q: q, g: currentG };
+        return { q: q, g: gForce, mach: mach, rho: rho };
     }
-
-    draw(ctx, zoom) {
-        ctx.save();
-        ctx.translate(this.pos.x, this.pos.y);
-        ctx.rotate(this.angle);
+    
+    draw(ctx, z) {
+        ctx.save(); ctx.translate(this.pos.x, this.pos.y); ctx.rotate(this.angle);
+        let s = Math.max(1, 1/(z*1.5)); ctx.scale(s, s);
         
-        // Scale ship to remain visible even at distance, but realistic up close
-        let s = Math.max(1, 1/(zoom*2));
-        ctx.scale(s, s);
-        
-        // Heat Shield Glow Overlay
-        if(this.temp > 1000) {
-            let a = Util.clamp((this.temp-1000)/(CFG.MAX_TEMP-1000), 0, 1);
-            ctx.shadowBlur = 50 * a; ctx.shadowColor = `rgba(255, ${255-a*200}, 0, ${a})`;
-            ctx.fillStyle = `rgba(255, ${255-a*200}, 0, ${a * 0.5})`;
-            ctx.beginPath(); ctx.ellipse(0, 15, 12, 6, 0, 0, Math.PI*2); ctx.fill();
+        // Heat Shield Glow
+        if(this.temp > 800) {
+            let a = Utils.clamp((this.temp-800)/2700, 0, 1);
+            ctx.shadowBlur = 60*a; ctx.shadowColor = `rgba(255,${255-a*200},0,${a})`;
+            ctx.fillStyle = `rgba(255,${255-a*200},0,${a*0.6})`;
+            ctx.beginPath(); ctx.ellipse(0, 25, 18, 8, 0, 0, TAU); ctx.fill();
         }
         ctx.shadowBlur = 0;
         
-        // SHIP HULL GEOMETRY (Seahawk-1 Command/Service Module)
-        ctx.lineWidth = 1.5;
-        ctx.strokeStyle = '#002244'; // Navy borders
+        // Hull
+        ctx.lineWidth = 1.5; ctx.strokeStyle = '#002244';
         
-        // Main Tank
-        ctx.fillStyle = '#A5ACAF'; // Wolf Grey
-        ctx.fillRect(-10, -5, 20, 25);
-        ctx.strokeRect(-10, -5, 20, 25);
-        
-        // Command Pod (Nose)
-        ctx.fillStyle = '#eee';
-        ctx.beginPath(); ctx.moveTo(0,-22); ctx.lineTo(10,-5); ctx.lineTo(-10,-5); ctx.closePath(); ctx.fill(); ctx.stroke();
-        
-        // Cockpit window
-        ctx.fillStyle = '#0ff';
-        ctx.beginPath(); ctx.moveTo(0,-16); ctx.lineTo(4,-9); ctx.lineTo(-4,-9); ctx.closePath(); ctx.fill();
-        
-        // Trim stripes
-        ctx.fillStyle = '#69BE28'; // Action Green
-        ctx.fillRect(-10, 5, 20, 3);
-        ctx.fillRect(-10, 12, 20, 3);
-        
-        // Engine Bell
-        ctx.fillStyle = '#333';
-        ctx.beginPath(); ctx.moveTo(-6,20); ctx.lineTo(6,20); ctx.lineTo(9,28); ctx.lineTo(-9,28); ctx.closePath(); ctx.fill(); ctx.stroke();
-        
-        // Landing Legs (Deployed)
-        ctx.strokeStyle = '#888'; ctx.lineWidth = 2.5;
-        ctx.beginPath(); ctx.moveTo(-10,15); ctx.lineTo(-20,30); ctx.lineTo(-15,32); ctx.stroke(); // Left
-        ctx.beginPath(); ctx.moveTo(10,15); ctx.lineTo(20,30); ctx.lineTo(15,32); ctx.stroke(); // Right
+        // Tank
+        ctx.fillStyle = '#A5ACAF'; ctx.fillRect(-12, -10, 24, 35); ctx.strokeRect(-12, -10, 24, 35);
+        // Pod
+        ctx.fillStyle = '#ddd'; ctx.beginPath(); ctx.moveTo(0,-30); ctx.lineTo(12,-10); ctx.lineTo(-12,-10); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#0ff'; ctx.beginPath(); ctx.moveTo(0,-22); ctx.lineTo(5,-14); ctx.lineTo(-5,-14); ctx.closePath(); ctx.fill();
+        // Trim
+        ctx.fillStyle = '#69BE28'; ctx.fillRect(-12, 5, 24, 4); ctx.fillRect(-12, 15, 24, 4);
+        // Engine
+        ctx.fillStyle = '#222'; ctx.beginPath(); ctx.moveTo(-8,25); ctx.lineTo(8,25); ctx.lineTo(12,38); ctx.lineTo(-12,38); ctx.closePath(); ctx.fill(); ctx.stroke();
+        // Legs
+        ctx.strokeStyle = '#888'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(-12,20); ctx.lineTo(-25,40); ctx.lineTo(-20,42); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(12,20); ctx.lineTo(25,40); ctx.lineTo(20,42); ctx.stroke();
         
         ctx.restore();
     }
 }
 
-// ============================================================================
-// MAIN GAME ENGINE CONTROLLER
-// Manages states, rendering loops, input, and UI binding
-// ============================================================================
-class GameEngine {
+// --- CORE ENGINE ---
+class Core {
     constructor() {
-        this.canvases = {
-            bg: document.getElementById('bg-canvas'),
-            main: document.getElementById('main-canvas'),
-            fx: document.getElementById('fx-canvas'),
-            ui: document.getElementById('ui-canvas')
-        };
-        this.ctxs = {
-            bg: this.canvases.bg.getContext('2d'),
-            main: this.canvases.main.getContext('2d'),
-            fx: this.canvases.fx.getContext('2d'),
-            ui: this.canvases.ui.getContext('2d')
-        };
+        this.ctxBg = document.getElementById('layer-deepspace').getContext('2d');
+        this.ctxPl = document.getElementById('layer-planet').getContext('2d');
+        this.ctxSh = document.getElementById('layer-ship').getContext('2d');
+        this.ctxFx = document.getElementById('layer-fx').getContext('2d');
         
         this.resize(); window.addEventListener('resize', ()=>this.resize());
-        
         this.keys = {};
-        window.addEventListener('keydown', e => { this.keys[e.code] = true; if(e.code==='Space') e.preventDefault(); });
-        window.addEventListener('keyup', e => this.keys[e.code] = false);
+        window.addEventListener('keydown', e=>{ this.keys[e.code]=true; if(e.code==='Space')e.preventDefault();});
+        window.addEventListener('keyup', e=>{ this.keys[e.code]=false; });
         
-        this.state = 'BOOT';
-        this.ship = new Ship();
-        this.particles = new ParticleEngine();
-        this.planetName = "";
-        this.planet = null;
-        this.renderer = null;
+        this.vfx = new VFX();
+        this.ship = new Vessel();
+        this.stars = Array(4000).fill(0).map(()=>({x:Math.random()*10000-5000, y:Math.random()*10000-5000, s:Math.random()*2, a:Math.random()}));
         
-        // Camera mechanics
-        this.cam = { x: 0, y: 0, zoom: 0.0005, targetZoom: 0.0005 };
-        
-        // Background Stars
-        this.stars = [];
-        for(let i=0; i<3000; i++) {
-            this.stars.push({
-                x: Math.random()*10000-5000, y: Math.random()*10000-5000, 
-                s: Math.random()*2, a: Math.random(), 
-                c: Math.random()>0.8?'#eef':'#fff'
-            });
-        }
-        
+        this.cam = { x:0, y:0, z:0.0001, tz:0.0001 };
+        this.state = 'INTRO'; // INTRO, MENU, FLIGHT, END
         this.lastT = performance.now();
-        this.logs = [];
+        this.sysLog = [];
         
-        this.bindUI();
-        this.generatePitchLadder();
-        this.runBootSequence();
+        this.initUI();
+        this.runIntro();
     }
     
     resize() {
         this.w = window.innerWidth; this.h = window.innerHeight;
-        for(let k in this.canvases) {
-            this.canvases[k].width = this.w; this.canvases[k].height = this.h;
-        }
-        // Force redraw on resize if in map or flight
-        if(this.state === 'FLIGHT') this.draw();
+        ['deepspace','planet','ship','fx','ui'].forEach(id=>{
+            let c=document.getElementById(`layer-${id}`); c.width=this.w; c.height=this.h;
+        });
     }
     
-    bindUI() {
-        document.getElementById('btn-init').onclick = () => this.setState('SELECT');
-        document.getElementById('btn-back').onclick = () => this.setState('MENU');
-        document.getElementById('btn-restart').onclick = () => this.setState('MENU');
-        
-        const grid = document.getElementById('planet-grid');
-        for(let [k, v] of Object.entries(PLANETS)) {
-            let d = document.createElement('div');
-            d.className = 'planet-card';
+    log(msg) {
+        let t = new Date().toISOString().substring(11,19);
+        this.sysLog.unshift(`[${t}] ${msg}`);
+        if(this.sysLog.length>6) this.sysLog.pop();
+        document.getElementById('sys-log').innerHTML = this.sysLog.join('<br>');
+    }
+    
+    initUI() {
+        let car = document.getElementById('planet-carousel');
+        for(let [k,v] of Object.entries(DB_PLANETS)) {
+            let d = document.createElement('div'); d.className = 'planet-card';
             d.innerHTML = `
-                <div class="card-header"><div class="card-swatch" style="background:${v.color}"></div><h2 class="card-title">${k}</h2></div>
-                <div class="card-stat"><span>Class:</span><span class="stat-val">${v.type}</span></div>
-                <div class="card-stat"><span>Surface Gravity:</span><span class="stat-val">${v.gravity.toFixed(2)} m/s²</span></div>
-                <div class="card-stat"><span>Atmo Pressure:</span><span class="stat-val">${v.atmPres>0 ? (v.atmPres/1000).toFixed(1)+' kPa' : 'VACUUM'}</span></div>
-                <div class="card-stat"><span>Surface Temp:</span><span class="stat-val">${v.temp} K</span></div>
-                <div class="card-desc">${v.desc}</div>
+                <div class="pc-bg" style="background:${v.cBase};"></div>
+                <div class="pc-title">${k}</div>
+                <div class="pc-stat"><span>CLASS:</span><span class="pc-stat-val">${v.type}</span></div>
+                <div class="pc-stat"><span>GRAVITY:</span><span class="pc-stat-val">${v.g.toFixed(2)} m/s²</span></div>
+                <div class="pc-stat"><span>ATMOSPHERE:</span><span class="pc-stat-val">${v.atmP>0?(v.atmP/1000).toFixed(1)+' kPa':'VACUUM'}</span></div>
+                <div class="pc-stat"><span>TEMP:</span><span class="pc-stat-val">${v.temp} K</span></div>
+                <div class="pc-desc">Initiate trajectory calculation for ${k}. Requires precise thermal and kinetic management.</div>
+                <button class="btn" style="margin-top:auto; width:100%;" onclick="window.game.startMission('${k}')">LAUNCH MISSION</button>
             `;
-            d.onclick = () => this.initMission(k, v);
-            grid.appendChild(d);
+            car.appendChild(d);
         }
-    }
-
-    generatePitchLadder() {
-        let container = document.getElementById('hud-pitch-ladder');
-        container.innerHTML = '';
+        
+        // Pitch ladder Gen
+        let lad = document.getElementById('hud-ladder');
         for(let i=90; i>=-90; i-=10) {
-            if(i === 0) continue; // Draw horizon separately
-            let r = document.createElement('div');
-            r.className = `pitch-rung ${i<0 ? 'neg' : ''}`;
-            r.setAttribute('data-val', Math.abs(i));
-            // Map degrees to pixels (e.g., 10px per degree)
-            r.style.top = `calc(50% - ${i * 10}px)`; 
-            container.appendChild(r);
+            if(i===0) continue;
+            let r = document.createElement('div'); r.className = `ladder-rung ${i<0?'neg':''}`;
+            r.setAttribute('data-p', Math.abs(i)); r.style.top = `calc(50% - ${i*10}px)`;
+            lad.appendChild(r);
         }
     }
     
-    logEvent(msg) {
-        let time = new Date().toISOString().substring(11,19);
-        this.logs.unshift(`[${time}] ${msg}`);
-        if(this.logs.length > 8) this.logs.pop();
-        document.getElementById('flight-logs').innerHTML = this.logs.join('<br>');
-    }
-    
-    runBootSequence() {
-        let container = document.getElementById('planet-flasher-container');
-        let fl = document.getElementById('planet-flasher');
-        let ring = document.getElementById('intro-data-ring');
-        let pName = document.getElementById('intro-planet-name');
-        let tx = document.getElementById('jaap-space-text');
-        let log = document.getElementById('boot-log-container');
-        
-        let pKeys = Object.keys(PLANETS);
-        let idx = 0;
-        
-        let bootData = [
-            "KERNEL BOOT... OK", "LOADING KINEMATICS... OK", "INIT N-BODY SOLVER...",
-            "COMPILING PROCEDURAL SHADERS...", "LINKING TELEMETRY BUS...",
-            "ALLOCATING PARTICLE POOL [4000]...", "CALIBRATING GYROS...",
-            "THERMO-SENSORS ONLINE", "AERODYNAMIC PROFILES LOADED",
-            "VERIFYING PILOT ID: JAAP...", "ACCESS GRANTED.", 
-            "VESSEL: SEAHAWK-1 HEAVY", "STANDBY FOR SYSTEM LAUNCH"
+    runIntro() {
+        let bL = document.getElementById('boot-log-left'), bR = document.getElementById('boot-log-right');
+        let lines = [
+            "KERNEL BOOT V12.0...", "MEMORY ALLOCATION [64TB] OK", "MOUNTING PROCEDURAL ENGINES...", "INIT SIMPLEX NOISE ALGORITHMS...",
+            "LINKING N-BODY SOLVER...", "AERODYNAMIC PROFILES LOADED", "THERMODYNAMICS ONLINE", "AVIONICS BUS RESPONDING",
+            "VERIFYING PILOT ID: JAAP", "ACCESS GRANTED. WELCOME COMMANDER."
         ];
-        let lIdx = 0;
-        
-        // Entrance animations
-        setTimeout(() => { fl.style.opacity = 1; ring.style.opacity = 1; pName.style.opacity = 1; }, 500);
-
-        // 6 second intro: Flash planets every 300ms, push logs
-        let intv = setInterval(() => {
-            if(idx >= 20) { // 20 * 300ms = 6000ms (6 seconds)
+        let i=0;
+        let intv = setInterval(()=>{
+            if(i>=lines.length) {
                 clearInterval(intv);
-                container.style.display = 'none';
-                log.style.display = 'none';
-                tx.classList.add('animate-reveal');
-                setTimeout(() => { 
-                    this.setState('MENU'); 
-                    requestAnimationFrame(t => this.loop(t)); 
-                }, 3000);
+                document.getElementById('intro-title').classList.add('anim-reveal');
+                document.getElementById('loader').style.display = 'block';
+                let loadI = 0;
+                let lIntv = setInterval(()=>{
+                    loadI += 5; document.getElementById('loader-fill').style.width = loadI+'%';
+                    if(loadI>=100) {
+                        clearInterval(lIntv);
+                        setTimeout(()=>{ this.setState('MENU'); requestAnimationFrame(t=>this.loop(t)); }, 500);
+                    }
+                }, 50);
                 return;
             }
-            
-            // Cycle planet data
-            let planet = PLANETS[pKeys[idx % pKeys.length]];
-            fl.style.backgroundColor = planet.color;
-            fl.style.boxShadow = `inset -20px -20px 40px rgba(0,0,0,0.8), 0 0 50px ${planet.atmos || planet.color}`;
-            pName.innerText = `TARGET: ${pKeys[idx % pKeys.length]}`;
-            
-            // Push log
-            if(lIdx < bootData.length && idx % 1 === 0) {
-                let div = document.createElement('div');
-                div.className = 'boot-line';
-                let ms = Math.floor(Math.random()*999).toString().padStart(3,'0');
-                div.innerHTML = `<span class="boot-time">SYS_${ms}</span><span class="boot-status">${bootData[lIdx]}</span>`;
-                log.appendChild(div);
-                lIdx++;
-            }
-            
-            idx++;
-        }, 300);
+            let d = document.createElement('div'); d.className='intro-log-line';
+            d.innerHTML = `<span class="intro-log-time">[${Math.floor(Math.random()*9999)}]</span> <span>${lines[i]}</span>`;
+            (i%2===0 ? bL : bR).appendChild(d);
+            i++;
+        }, 150);
     }
     
     setState(s) {
-        document.querySelectorAll('.screen').forEach(e => e.classList.remove('active'));
-        document.getElementById('hud').style.display = 'none';
+        document.querySelectorAll('.screen').forEach(e=>e.classList.remove('active'));
+        document.getElementById('hud-layer').style.display = 'none';
         this.state = s;
-        if(s === 'MENU') document.getElementById('menu-screen').classList.add('active');
-        if(s === 'SELECT') document.getElementById('select-screen').classList.add('active');
-        if(s === 'FLIGHT') { document.getElementById('hud').style.display = 'block'; this.logEvent("MISSION COMMENCED. HOLDING TO DE-ORBIT."); }
-        if(s === 'END') { document.getElementById('end-screen').classList.add('active'); this.populateDebrief(); }
+        if(s==='MENU') document.getElementById('menu-screen').classList.add('active');
+        if(s==='FLIGHT') { document.getElementById('hud-layer').style.display = 'block'; this.log('ORBITAL INSERTION COMPLETE.'); }
+        if(s==='END') { document.getElementById('end-screen').classList.add('active'); this.popDebrief(); }
     }
     
-    initMission(name, data) {
-        this.planetName = name; this.planet = data;
-        this.renderer = new PlanetRenderer(data, this.w, this.h);
+    startMission(name) {
+        this.pName = name; this.pl = DB_PLANETS[name];
+        this.rend = new PlanetRenderer(this.pl, this.ctxPl, this.ctxBg, this.w, this.h);
         this.ship.reset();
-        this.logs = [];
+        this.sysLog = [];
+        this.ship.pos.x = (Math.random()-0.5)*this.rend.SURFACE_W;
+        for(let p of this.vfx.p) p.a=false;
         
-        // Randomize spawn orbit above the planet
-        this.ship.pos.x = (Math.random()-0.5) * CFG.SURFACE_WIDTH;
+        this.cam.x = this.ship.pos.x; this.cam.y = this.ship.pos.y;
+        this.cam.z = this.cam.tz = 0.00005; // Extreme deep space zoom
         
-        // Reset Particle Pool
-        for(let p of this.particles.p) p.active = false;
-        
-        // Reset Cam
-        this.cam.x = this.ship.pos.x;
-        this.cam.y = this.ship.pos.y;
-        this.cam.zoom = 0.0001; // Extremely zoomed out for deep space view
-        this.cam.targetZoom = 0.0001;
-        
-        document.getElementById('h-target').innerText = name;
-        document.getElementById('h-grav').innerText = data.gravity.toFixed(2) + ' m/s²';
-        
+        document.getElementById('ui-body').innerText = name;
         this.setState('FLIGHT');
     }
     
-    processInput() {
+    input() {
         if(this.state !== 'FLIGHT') return;
-        this.ship.ctrl.thrust = this.keys['Space'] || this.keys['KeyW'] || this.keys['ArrowUp'];
-        this.ship.ctrl.left = this.keys['KeyJ'];
-        this.ship.ctrl.right = this.keys['KeyL'];
-        this.ship.ctrl.ccw = this.keys['KeyA'] || this.keys['ArrowLeft'];
-        this.ship.ctrl.cw = this.keys['KeyD'] || this.keys['ArrowRight'];
+        this.ship.ctrl.t = this.keys['Space']||this.keys['KeyW'];
+        this.ship.ctrl.l = this.keys['KeyJ']; this.ship.ctrl.r = this.keys['KeyL'];
+        this.ship.ctrl.ccw = this.keys['KeyA']; this.ship.ctrl.cw = this.keys['KeyD'];
     }
     
     update(dt) {
         if(this.state !== 'FLIGHT') return;
         
-        let absAlt = -this.ship.pos.y; 
-        let surfH = this.renderer.getHeight(this.ship.pos.x);
-        let radarAlt = absAlt - surfH;
+        let absAlt = -this.ship.pos.y;
+        let sH = this.rend.getHeight(this.ship.pos.x);
+        let rAlt = absAlt - sH;
         
-        // Run physics integration
-        let forces = this.ship.update(dt, this.planet, radarAlt);
+        let f = this.ship.update(dt, this.pl, rAlt);
         
-        // VFX: Engine Plumes
-        if(this.ship.ctrl.thrust && this.ship.fuel > 0 && !this.ship.crashed && !this.ship.landed) {
-            let px = this.ship.pos.x - Math.sin(this.ship.angle)*25;
-            let py = this.ship.pos.y + Math.cos(this.ship.angle)*25;
-            let vx = -Math.sin(this.ship.angle)*1500 + this.ship.vel.x; // High exhaust velocity
-            let vy = Math.cos(this.ship.angle)*1500 + this.ship.vel.y;
-            this.particles.emit(px, py, vx, vy, 'thrust');
+        // VFX Emitters
+        if(this.ship.ctrl.t && this.ship.fuel>0 && this.ship.state==='FLYING') {
+            let px = this.ship.pos.x - Math.sin(this.ship.angle)*35;
+            let py = this.ship.pos.y + Math.cos(this.ship.angle)*35;
+            let vx = -Math.sin(this.ship.angle)*2000 + this.ship.vel.x;
+            let vy = Math.cos(this.ship.angle)*2000 + this.ship.vel.y;
+            this.vfx.emit(px,py,vx,vy,'thrust');
+            document.getElementById('lens-flare').style.opacity = 1;
+        } else {
+            document.getElementById('lens-flare').style.opacity = 0;
         }
         
-        // VFX: RCS Thrusters
-        if(this.ship.rcs > 0 && !this.ship.crashed && !this.ship.landed) {
-            let cx = Math.cos(this.ship.angle), sx = Math.sin(this.ship.angle);
-            // Translate local thruster offsets to world space
-            let lOff = (ox, oy) => ({ x: this.ship.pos.x + ox*cx - oy*sx, y: this.ship.pos.y + ox*sx + oy*cx });
-            
-            if(this.ship.ctrl.ccw) {
-                let p1 = lOff(15, -15); this.particles.emit(p1.x, p1.y, this.ship.vel.x+sx*200, this.ship.vel.y-cx*200, 'rcs');
-                let p2 = lOff(-15, 15); this.particles.emit(p2.x, p2.y, this.ship.vel.x-sx*200, this.ship.vel.y+cx*200, 'rcs');
-            }
-            if(this.ship.ctrl.cw) {
-                let p1 = lOff(-15, -15); this.particles.emit(p1.x, p1.y, this.ship.vel.x-sx*200, this.ship.vel.y+cx*200, 'rcs');
-                let p2 = lOff(15, 15); this.particles.emit(p2.x, p2.y, this.ship.vel.x+sx*200, this.ship.vel.y-cx*200, 'rcs');
-            }
+        if(this.ship.rcs>0 && this.ship.state==='FLYING') {
+            let c=Math.cos(this.ship.angle), s=Math.sin(this.ship.angle);
+            let off = (ox,oy)=>({x:this.ship.pos.x+ox*c-oy*s, y:this.ship.pos.y+ox*s+oy*c});
+            if(this.ship.ctrl.ccw) { let p=off(20,-20); this.vfx.emit(p.x,p.y, this.ship.vel.x+s*300, this.ship.vel.y-c*300, 'rcs'); }
+            if(this.ship.ctrl.cw) { let p=off(-20,-20); this.vfx.emit(p.x,p.y, this.ship.vel.x-s*300, this.ship.vel.y+c*300, 'rcs'); }
         }
         
-        // VFX: Aerodynamic Plasma (Re-entry)
-        if(forces && forces.q > 500 && this.ship.temp > 500 && !this.ship.crashed) {
-            this.particles.emit(this.ship.pos.x, this.ship.pos.y, this.ship.vel.x*0.5, this.ship.vel.y*0.5, 'plasma');
-            // Screen shake based on Q
-            let shake = Math.min(20, forces.q / 1000);
-            this.cam.x += Util.randomRange(-shake, shake);
-            this.cam.y += Util.randomRange(-shake, shake);
+        if(f.q > 1000 && this.ship.temp > 800 && this.ship.state==='FLYING') {
+            this.vfx.emit(this.ship.pos.x, this.ship.pos.y, this.ship.vel.x*0.4, this.ship.vel.y*0.4, 'plasma');
+            let shk = Math.min(30, f.q/500);
+            this.cam.x += Utils.randomRange(-shk,shk); this.cam.y += Utils.randomRange(-shk,shk);
         }
         
-        // Update particles
-        this.particles.update(dt);
+        this.vfx.update(dt);
         
-        // COLLISION & LANDING LOGIC
-        if(radarAlt <= 20 && !this.ship.crashed && !this.ship.landed) {
-            this.ship.pos.y = -surfH - 20; // Snap to surface
-            let vv = Math.abs(this.ship.vel.y); 
-            let hv = Math.abs(this.ship.vel.x);
-            let pt = Math.abs(Util.deg(this.ship.angle)); 
-            if(pt > 180) pt = 360 - pt;
+        // Collision
+        if(rAlt <= 30 && this.ship.state === 'FLYING') {
+            this.ship.pos.y = -sH - 30;
+            let vv = Math.abs(this.ship.vel.y), hv = Math.abs(this.ship.vel.x);
+            let pt = Math.abs(Utils.deg(this.ship.angle)); if(pt>180) pt=360-pt;
             
-            let safeV = CFG.SAFE_V * this.planet.safeMod;
+            let pX = -this.rend.SURFACE_W/2 + (this.rend.padIdx/this.rend.pts)*this.rend.SURFACE_W;
+            let pW = (this.rend.padW*2/this.rend.pts)*this.rend.SURFACE_W;
+            let onPad = (this.ship.pos.x > pX-pW/2 && this.ship.pos.x < pX+pW/2);
             
-            // Check if on Landing Pad
-            let padX = -CFG.SURFACE_WIDTH/2 + (this.renderer.padIdx/this.renderer.pts)*CFG.SURFACE_WIDTH;
-            let padW = (this.renderer.padWidth*2/this.renderer.pts)*CFG.SURFACE_WIDTH;
-            let onPad = (this.ship.pos.x > padX - padW/2 && this.ship.pos.x < padX + padW/2);
-            
-            if(vv > safeV || hv > CFG.SAFE_H || pt > CFG.SAFE_PITCH || (!onPad && pt > 5.0)) {
-                // CRASH
-                this.ship.crashed = true;
-                this.particles.emit(this.ship.pos.x, this.ship.pos.y, 0, 0, 'explosion');
-                this.ship.vel.set(0,0);
-                this.ship.failReason = `IMPACT TOO SEVERE. V:${vv.toFixed(1)} H:${hv.toFixed(1)} PITCH:${pt.toFixed(1)}°`;
-                this.logEvent("CATASTROPHIC STRUCTURAL FAILURE.");
-                setTimeout(() => this.setState('END'), 4000);
+            if(vv > this.pl.safeV || hv > 5.0 || pt > 12.0 || (!onPad && pt>5.0)) {
+                this.ship.state = 'CRASHED';
+                this.vfx.emit(this.ship.pos.x, this.ship.pos.y, 0,0, 'exp');
+                this.ship.vel.set(0,0,0);
+                this.ship.fReason = `IMPACT VELOCITY/PITCH EXCEEDED TOLERANCES.`;
+                this.log('CATASTROPHIC IMPACT DETECTED.');
+                setTimeout(()=>this.setState('END'), 3500);
             } else {
-                // LANDED
-                this.ship.landed = true; 
-                this.ship.vel.set(0,0); 
-                this.ship.angle = 0; // Stand upright
-                this.particles.emit(this.ship.pos.x, this.ship.pos.y, 0, 0, 'smoke'); // touchdown dust
-                this.logEvent("TOUCHDOWN CONFIRMED. ENGINE SHUTDOWN.");
-                setTimeout(() => this.setState('END'), 4000);
+                this.ship.state = 'LANDED';
+                this.ship.vel.set(0,0,0); this.ship.angle = 0;
+                this.vfx.emit(this.ship.pos.x, this.ship.pos.y, 0,0, 'smoke');
+                this.log('VESSEL TOUCHDOWN CONFIRMED.');
+                setTimeout(()=>this.setState('END'), 3500);
             }
         }
         
-        if(this.ship.crashed && Math.random() < 0.1) {
-            this.particles.emit(this.ship.pos.x, this.ship.pos.y, 0, -50, 'smoke'); // Lingering smoke
-        }
+        if(this.ship.state === 'CRASHED' && Math.random()<0.1) this.vfx.emit(this.ship.pos.x, this.ship.pos.y, 0,-100, 'smoke');
         
-        // CAMERA DYNAMICS
-        // Zoom tightly correlates with altitude for seamless deep space to surface transition
-        if(absAlt > CFG.LOD_TRANSITION) {
-            // Far space view. Ship is tiny.
-            this.cam.targetZoom = 0.0005;
-        } else {
-            // Exponential zoom in as approaching surface
-            let ratio = 1 - (absAlt / CFG.LOD_TRANSITION);
-            this.cam.targetZoom = Util.lerp(0.0005, 1.5, Math.pow(ratio, 0.4));
-        }
+        // Camera LOD Zoom Logic
+        if(absAlt > this.rend.LOD_TRANS) this.cam.tz = 0.0005;
+        else { let r = 1-(absAlt/this.rend.LOD_TRANS); this.cam.tz = Utils.lerp(0.0005, 1.2, Math.pow(r, 0.5)); }
         
-        this.cam.zoom = Util.lerp(this.cam.zoom, this.cam.targetZoom, dt * 2);
+        this.cam.z = Utils.lerp(this.cam.z, this.cam.tz, dt*3);
+        let lX = this.ship.vel.x * 0.5, lY = this.ship.vel.y * 0.5;
+        this.cam.x = Utils.lerp(this.cam.x, this.ship.pos.x + lX, dt*5);
+        this.cam.y = Utils.lerp(this.cam.y, this.ship.pos.y + lY, dt*5);
         
-        // Camera follows ship but leads velocity slightly
-        let leadX = this.ship.vel.x * 0.8; 
-        let leadY = this.ship.vel.y * 0.8;
-        this.cam.x = Util.lerp(this.cam.x, this.ship.pos.x + leadX, dt * 5);
-        this.cam.y = Util.lerp(this.cam.y, this.ship.pos.y + leadY, dt * 5);
-        
-        // HUD Updates
-        if(Math.random() < 0.2) this.updateHUD(radarAlt, absAlt, forces);
+        this.updHUD(rAlt, absAlt, f);
     }
     
-    updateHUD(rAlt, aAlt, forces) {
-        // Core Kinematics
-        document.getElementById('h-alt').innerText = (Math.max(0, aAlt)/1000).toFixed(2) + ' km';
-        document.getElementById('h-radar').innerText = Math.max(0, rAlt).toFixed(0) + ' m';
-        document.getElementById('h-vvel').innerText = this.ship.vel.y.toFixed(1) + ' m/s';
-        document.getElementById('h-svel').innerText = this.ship.vel.x.toFixed(1) + ' m/s';
-        document.getElementById('h-ovel').innerText = this.ship.vel.mag().toFixed(1) + ' m/s';
+    updHUD(rA, aA, f) {
+        document.getElementById('ui-alt').innerText = (Math.max(0,aA)/1000).toFixed(2) + ' km';
+        document.getElementById('ui-radar').innerText = Math.max(0,rA).toFixed(0) + ' m';
+        document.getElementById('ui-vvel').innerText = this.ship.vel.y.toFixed(1) + ' m/s';
+        document.getElementById('ui-hvel').innerText = this.ship.vel.x.toFixed(1) + ' m/s';
+        document.getElementById('ui-ovel').innerText = this.ship.vel.mag().toFixed(1) + ' m/s';
         
-        // Orbital Math (Simplified Keplerian for HUD)
-        let r = this.planet.radius + aAlt;
-        let vSq = this.ship.vel.magSq();
-        let mu = CFG.G * 5.97e24; // Approximation for demo
-        let a = 1 / (2/r - vSq/mu); // Semi-major axis
-        let apo = a * (1 + 0.5) - this.planet.radius; // Mock eccentricity
-        let peri = a * (1 - 0.5) - this.planet.radius;
-        document.getElementById('h-apo').innerText = (Math.max(0, apo)/1000).toFixed(1) + ' km';
-        document.getElementById('h-peri').innerText = (peri/1000).toFixed(1) + ' km';
+        // Keplerian Orbital Approx
+        let r = this.pl.r + Math.max(0,aA);
+        let v2 = this.ship.vel.magSq();
+        let mu = G_CONST * this.pl.m;
+        let sma = 1 / (2/r - v2/mu);
+        let apo = sma * 1.5 - this.pl.r; let peri = sma * 0.5 - this.pl.r; // Mock eccentricity scale
+        document.getElementById('ui-apo').innerText = (Math.max(0,apo)/1000).toFixed(1) + ' km';
+        document.getElementById('ui-peri').innerText = (peri/1000).toFixed(1) + ' km';
         
-        // Pitch & Prograde
-        let degPitch = Util.deg(this.ship.angle);
-        document.getElementById('h-pitch').innerText = degPitch.toFixed(1) + '°';
-        document.getElementById('hud-pitch-ladder').style.transform = `translate(-50%, -50%) translateY(${degPitch * 10}px) rotate(${-degPitch}deg)`;
+        // Environment
+        document.getElementById('ui-g').innerText = (mu / (r*r)).toFixed(2) + ' m/s²';
+        document.getElementById('ui-rho').innerText = f.rho.toFixed(4) + ' kg/m³';
+        document.getElementById('ui-q').innerText = (f.q/1000).toFixed(2) + ' kPa';
+        document.getElementById('ui-mach').innerText = f.mach.toFixed(2);
         
-        // Compass Strip
-        let heading = (degPitch + 360) % 360;
-        let cStrip = document.getElementById('compass-strip');
-        cStrip.innerText = "| 330 | 345 | 000 | 015 | 030 | 045 | 060 | 075 | 090 | 105 | 120 |";
-        cStrip.style.transform = `translateX(${-(heading * 2)}px)`;
+        // Ship Systems
+        let fp = (this.ship.fuel/this.ship.mFuel)*100, rp = (this.ship.rcs/this.ship.mRcs)*100, tp = (this.ship.temp/3500)*100;
+        document.getElementById('ui-fuel').innerText = fp.toFixed(1)+'%'; document.getElementById('bar-fuel').style.width = fp+'%';
+        document.getElementById('ui-rcs').innerText = rp.toFixed(1)+'%'; document.getElementById('bar-rcs').style.width = rp+'%';
+        document.getElementById('ui-temp').innerText = this.ship.temp.toFixed(0)+' K'; document.getElementById('bar-temp').style.width = Math.min(100,tp)+'%';
+        document.getElementById('bar-temp').style.background = tp>85?'var(--crit)':tp>50?'var(--warn)':'var(--pri)';
         
-        // Prograde Marker
-        let vAngle = Math.atan2(this.ship.vel.y, this.ship.vel.x);
-        let proX = Math.cos(vAngle - this.ship.angle + Math.PI/2) * 150;
-        let proY = Math.sin(vAngle - this.ship.angle + Math.PI/2) * 150;
-        document.getElementById('prograde-marker').style.transform = `translate(calc(-50% + ${proX}px), calc(-50% + ${proY}px))`;
-
-        // Sensors
-        document.getElementById('h-gforce').innerText = forces.g.toFixed(2) + ' G';
-        document.getElementById('h-q').innerText = (forces.q/1000).toFixed(2) + ' kPa';
+        let uiT = document.getElementById('ui-thrust');
+        if(this.ship.ctrl.t && this.ship.fuel>0) { uiT.innerText = (this.ship.T_main/1000).toFixed(0) + ' kN'; uiT.style.color='var(--info)'; }
+        else if(this.ship.fuel<=0) { uiT.innerText = '0 kN'; uiT.style.color='var(--crit)'; }
+        else { uiT.innerText = '0 kN'; uiT.style.color='var(--pri)'; }
         
-        let rho = 0;
-        if(this.planet.atmPres > 0) rho = (this.planet.atmPres / (CFG.R_GAS * this.planet.temp)) * Math.exp(-aAlt/this.planet.scaleH);
-        document.getElementById('h-atm').innerText = rho.toFixed(4) + ' kg/m³';
+        document.getElementById('ui-gforce').innerText = f.g.toFixed(2) + ' G';
         
-        // Thermal
-        let tp = (this.ship.temp / CFG.MAX_TEMP) * 100;
-        let tb = document.getElementById('h-temp-bar');
-        tb.style.width = Math.min(100, tp) + '%';
-        document.getElementById('h-temp-val').innerText = this.ship.temp.toFixed(0) + ' K';
-        if(tp > 85) { tb.style.background = '#f00'; document.getElementById('h-temp-val').className = 'hud-value crit'; }
-        else if(tp > 50) { tb.style.background = '#fa0'; document.getElementById('h-temp-val').className = 'hud-value warn'; }
-        else { tb.style.background = 'var(--seahawk-green)'; document.getElementById('h-temp-val').className = 'hud-value'; }
+        // Navball & Reticle
+        let deg = Utils.deg(this.ship.angle);
+        document.getElementById('nav-sphere').style.transform = `translateZ(-100px) rotateZ(${-deg}deg) rotateX(${Math.max(-80, Math.min(80, this.ship.vel.y/10))}deg)`;
         
-        // Propellant
-        let fp = (this.ship.fuel / this.ship.maxFuel) * 100;
-        document.getElementById('h-fuel-bar').style.width = fp + '%';
-        document.getElementById('h-fuel-val').innerText = fp.toFixed(1) + '%';
+        let vA = Math.atan2(this.ship.vel.y, this.ship.vel.x);
+        let proX = Math.cos(vA - this.ship.angle + PI/2) * 100, proY = Math.sin(vA - this.ship.angle + PI/2) * 100;
+        document.getElementById('nav-prograde').style.transform = `translate(calc(-50% + ${proX}px), calc(-50% + ${proY}px))`;
         
-        let rp = (this.ship.rcs / this.ship.maxRcs) * 100;
-        document.getElementById('h-rcs-bar').style.width = rp + '%';
-        document.getElementById('h-rcs-val').innerText = rp.toFixed(1) + '%';
+        document.getElementById('hud-ladder').style.transform = `translate(-50%,-50%) translateY(${deg*10}px) rotate(${-deg}deg)`;
         
-        let ts = document.getElementById('h-thrust-status');
-        let tk = document.getElementById('h-thrust-kn');
-        if(this.ship.ctrl.thrust && this.ship.fuel>0) { 
-            ts.innerText = 'BURNING'; ts.style.color='#0ff'; 
-            tk.innerText = (this.ship.thrustM / 1000).toFixed(0);
-        }
-        else if(this.ship.fuel<=0) { ts.innerText = 'BINGO FUEL'; ts.style.color='#f00'; tk.innerText = "0.0"; }
-        else { ts.innerText = 'IDLE'; ts.style.color='var(--seahawk-green)'; tk.innerText = "0.0"; }
-        
-        // Warning Logic
-        let wT = document.getElementById('warn-terrain');
-        let wH = document.getElementById('warn-heat');
-        let wS = document.getElementById('warn-speed');
-        
-        wT.style.display = (rAlt < 5000 && this.ship.vel.y > 200) ? 'block' : 'none';
-        wH.style.display = (tp > 90) ? 'block' : 'none';
-        wS.style.display = (rAlt < 10000 && this.ship.vel.mag() > 1000 && rho > 0.05) ? 'block' : 'none';
-        
-        // Target Box Logic (Deep Space)
-        let tBox = document.getElementById('target-box');
-        if(aAlt > CFG.LOD_TRANSITION * 2) {
-            tBox.style.display = 'block';
-            tBox.setAttribute('data-dist', (aAlt/1000).toFixed(0) + ' km');
-            // Calculate screen space position of planet center
-            // (Simplification: it's always centered in this view model)
-            tBox.style.left = '50%'; tBox.style.top = '50%';
-        } else {
-            tBox.style.display = 'none';
-        }
-
-        this.drawGraph();
-    }
-
-    drawGraph() {
-        let canvas = document.getElementById('graph-traj');
-        let ctx = canvas.getContext('2d');
-        let w = canvas.width = canvas.offsetWidth;
-        let h = canvas.height = canvas.offsetHeight;
-        
-        ctx.clearRect(0,0,w,h);
-        
-        // Grid
-        ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1;
-        for(let i=0; i<w; i+=20) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,h); ctx.stroke(); }
-        for(let i=0; i<h; i+=20) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(w,i); ctx.stroke(); }
-        
-        if(this.ship.telemetry.length < 2) return;
-        
-        // Find max values for dynamic scaling
-        let maxAlt = Math.max(...this.ship.telemetry.map(t => t.alt));
-        let maxVel = Math.max(...this.ship.telemetry.map(t => t.vel));
-        
-        ctx.beginPath();
-        ctx.strokeStyle = '#0ff'; ctx.lineWidth = 2;
-        
-        let step = w / this.ship.telemetry.length;
-        this.ship.telemetry.forEach((t, i) => {
-            let x = i * step;
-            // Map Alt to Y, Vel to X (Parametric curve style) or just history over time. Let's do history over time.
-            let y = h - (t.vel / maxVel) * h; 
-            if(i===0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-        });
-        ctx.stroke();
+        // Alarms
+        document.getElementById('warn-pullup').style.display = (rA<8000 && this.ship.vel.y>250) ? 'block' : 'none';
+        document.getElementById('warn-temp').style.display = (tp>90) ? 'block' : 'none';
+        document.getElementById('warn-aero').style.display = (f.q>50000) ? 'block' : 'none';
     }
     
-    populateDebrief() {
-        document.getElementById('e-target').innerText = this.planetName;
-        document.getElementById('e-vvel').innerText = this.ship.vel.y.toFixed(2) + ' m/s';
-        document.getElementById('e-hvel').innerText = this.ship.vel.x.toFixed(2) + ' m/s';
-        document.getElementById('e-temp').innerText = this.ship.temp.toFixed(0) + ' K';
-        document.getElementById('e-maxg').innerText = this.ship.maxGSustained.toFixed(1) + ' G';
-        document.getElementById('e-fuel').innerText = this.ship.fuel.toFixed(0) + ' kg';
+    popDebrief() {
+        document.getElementById('d-body').innerText = this.pName;
+        document.getElementById('d-vvel').innerText = this.ship.vel.y.toFixed(2) + ' m/s';
+        document.getElementById('d-hvel').innerText = this.ship.vel.x.toFixed(2) + ' m/s';
+        document.getElementById('d-temp').innerText = this.ship.temp.toFixed(0) + ' K';
+        document.getElementById('d-g').innerText = this.ship.maxG.toFixed(1) + ' G';
         
-        let tt = document.getElementById('end-title');
-        let rt = document.getElementById('e-rating');
-        let cr = document.getElementById('e-cause');
-        
-        if(this.ship.crashed) {
-            tt.innerText = "MISSION FAILED"; tt.className = 'fail-text';
-            rt.innerText = "F - VESSEL DESTROYED"; rt.className = 'fail-text';
-            cr.innerText = "CAUSE: " + (this.ship.failReason || "UNKNOWN KINETIC DISASSEMBLY");
+        let stat = document.getElementById('d-status'), rt = document.getElementById('end-rating'), cse = document.getElementById('d-cause');
+        if(this.ship.state === 'CRASHED') {
+            stat.innerText = 'VESSEL DESTROYED'; stat.style.color = 'var(--crit)';
+            rt.innerText = 'F - MISSION FAILED'; rt.style.color = 'var(--crit)';
+            cse.innerText = "CAUSE: " + this.ship.fReason;
         } else {
-            tt.innerText = "MISSION SUCCESS"; tt.className = 'success-text';
-            cr.innerText = "VESSEL SECURED. AWAITING EXTRACTION.";
-            
-            let vS = Math.abs(this.ship.vel.y);
-            let hS = Math.abs(this.ship.vel.x);
-            let dV = this.ship.fuel;
-            
-            if(vS < 1.0 && hS < 0.5 && dV > 5000) { rt.innerText = "S-RANK (FLAWLESS)"; rt.style.color = '#ffd700'; }
-            else if(vS < 3.0) { rt.innerText = "A-RANK (EXCELLENT)"; rt.className = 'success-text'; }
-            else { rt.innerText = "B-RANK (NOMINAL)"; rt.style.color = '#fff'; }
+            stat.innerText = 'TOUCHDOWN SECURE'; stat.style.color = 'var(--pri)';
+            let v = Math.abs(this.ship.vel.y), h = Math.abs(this.ship.vel.x);
+            if(v<2.0 && h<0.5) { rt.innerText = 'S - FLAWLESS EXECUTION'; rt.style.color = '#ffd700'; }
+            else if(v<5.0) { rt.innerText = 'A - EXCELLENT PILOTING'; rt.style.color = 'var(--pri)'; }
+            else { rt.innerText = 'B - NOMINAL LANDING'; rt.style.color = '#fff'; }
+            cse.innerText = "CREW SECURED. AWAITING ORBITAL EXTRACTION.";
         }
     }
     
     draw() {
-        // Clear layers
-        this.ctxs.bg.fillStyle = '#000'; this.ctxs.bg.fillRect(0,0,this.w,this.h);
-        this.ctxs.main.clearRect(0,0,this.w,this.h);
-        this.ctxs.fx.clearRect(0,0,this.w,this.h);
+        this.ctxBg.clearRect(0,0,this.w,this.h); this.ctxPl.clearRect(0,0,this.w,this.h);
+        this.ctxSh.clearRect(0,0,this.w,this.h); this.ctxFx.clearRect(0,0,this.w,this.h);
         
-        // Deep Space Background (Parallax Stars)
-        this.ctxs.bg.fillStyle = '#fff';
+        // Stars
+        this.ctxBg.fillStyle = '#fff';
         for(let s of this.stars) {
-            let sx = (s.x - this.cam.x*0.001) % this.w; 
-            let sy = (s.y - this.cam.y*0.001) % this.h;
+            let sx = (s.x - this.cam.x*0.0005) % this.w, sy = (s.y - this.cam.y*0.0005) % this.h;
             if(sx<0) sx+=this.w; if(sy<0) sy+=this.h;
-            this.ctxs.bg.globalAlpha = s.a; 
-            this.ctxs.bg.fillStyle = s.c;
-            this.ctxs.bg.fillRect(sx, sy, s.s, s.s);
+            this.ctxBg.globalAlpha = s.a; this.ctxBg.fillRect(sx,sy,s.s,s.s);
         }
-        this.ctxs.bg.globalAlpha = 1.0;
+        this.ctxBg.globalAlpha = 1.0;
         
-        if(this.state === 'FLIGHT' && this.renderer) {
-            let alt = -this.ship.pos.y;
+        if(this.state === 'FLIGHT' && this.rend) {
+            let absAlt = Math.max(0, -this.ship.pos.y);
             
-            // Draw Planet Data
-            this.renderer.draw(this.ctxs.main, Math.max(0, alt), this.cam.x, this.cam.y, this.cam.zoom);
+            // LOD Transition Render
+            if(absAlt > this.rend.LOD_TRANS) this.rend.drawSphere(absAlt, this.cam.z);
+            else this.rend.drawSurface(absAlt, this.cam.x, this.cam.y, this.cam.z);
             
-            // Draw Ship & FX
-            this.ctxs.main.save();
-            this.ctxs.main.translate(this.w/2, this.h/2);
-            this.ctxs.main.scale(this.cam.zoom, this.cam.zoom);
-            this.ctxs.main.translate(-this.cam.x, -this.cam.y);
-            
-            if(!this.ship.crashed) {
-                this.ship.draw(this.ctxs.main, this.cam.zoom);
+            // Ship & FX
+            if(this.ship.state !== 'CRASHED') {
+                this.ctxSh.save(); this.ctxSh.translate(this.w/2, this.h/2);
+                this.ctxSh.scale(this.cam.z, this.cam.z); this.ctxSh.translate(-this.cam.x, -this.cam.y);
+                this.ship.draw(this.ctxSh, this.cam.z);
+                this.ctxSh.restore();
             }
-            this.ctxs.main.restore();
-            
-            // FX rendered to screen-blend layer for glow
-            this.particles.draw(this.ctxs.fx, this.cam.x, this.cam.y, this.cam.zoom);
+            this.vfx.draw(this.ctxFx, this.cam.x, this.cam.y, this.cam.z);
         }
     }
     
     loop(t) {
         let dt = (t - this.lastT)/1000; this.lastT = t;
-        if(dt > CFG.MAX_DT) dt = CFG.MAX_DT; // Clamp lag
+        if(dt > 0.05) dt = 0.05;
         
-        this.processInput(); 
-        this.update(dt); 
+        this.input();
+        this.update(dt);
         this.draw();
         
         requestAnimationFrame(time => this.loop(time));
     }
 }
 
-// Boot engine when DOM is ready
-window.onload = () => { window.JaapEngine = new GameEngine(); };
-
+window.onload = () => { window.game = new Core(); };
 </script>
 </body>
 </html>
