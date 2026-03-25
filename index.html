@@ -1,1990 +1,1104 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LUNAR LANDER</title>
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #000;
-            overflow: hidden;
-            touch-action: none;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-        #game-canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-            image-rendering: pixelated;
-        }
-        /* CRT Glow Effect */
-        .crt {
-            pointer-events: none;
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle at center, transparent 50%, rgba(0, 0, 0, 0.4) 100%);
-            box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
-            z-index: 10;
-        }
-        .scanlines {
-            pointer-events: none;
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
-            background-size: 100% 4px;
-            z-index: 11;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>LUNAR LANDER: COMMAND MODULE</title>
+<style>
+:root {
+    --vec-color: #e0e0e0;
+    --vec-glow: rgba(224, 224, 224, 0.4);
+    --bg-color: #020202;
+    --hud-color: #00ffcc;
+    --warn-color: #ffaa00;
+    --crit-color: #ff3333;
+    --panel-bg: rgba(5, 10, 15, 0.9);
+    --panel-border: #335577;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+body, html { width: 100%; height: 100%; background: var(--bg-color); overflow: hidden; font-family: monospace; color: var(--vec-color); }
+#game-container { position: relative; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
+canvas { display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+
+.crt-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; pointer-events: none;
+    background: radial-gradient(circle at center, transparent 40%, rgba(0, 0, 0, 0.6) 100%);
+    box-shadow: inset 0 0 120px rgba(0,0,0,0.9);
+}
+.scanlines {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 51; pointer-events: none;
+    background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.15));
+    background-size: 100% 4px;
+}
+.phosphor-glow {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 49; pointer-events: none;
+    background: rgba(200, 255, 200, 0.02); mix-blend-mode: screen;
+}
+
+/* UI OVERLAYS */
+#ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; pointer-events: none; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); pointer-events: auto; }
+.active-screen { display: flex; }
+
+.panel {
+    background: var(--panel-bg); border: 2px solid var(--panel-border); border-radius: 4px; padding: 30px;
+    box-shadow: 0 0 30px rgba(0, 150, 255, 0.1), inset 0 0 20px rgba(0, 0, 0, 0.8);
+    width: 90%; max-width: 1000px; max-height: 90vh; display: flex; flex-direction: column; position: relative;
+}
+.panel::before { content:''; position:absolute; top:-2px; left:-2px; width:10px; height:10px; border-top:2px solid var(--hud-color); border-left:2px solid var(--hud-color); }
+.panel::after { content:''; position:absolute; bottom:-2px; right:-2px; width:10px; height:10px; border-bottom:2px solid var(--hud-color); border-right:2px solid var(--hud-color); }
+
+.title-text { font-size: 48px; text-align: center; color: var(--vec-color); text-shadow: 0 0 10px var(--vec-color); margin-bottom: 20px; letter-spacing: 4px; font-weight: bold; text-transform: uppercase;}
+.sub-text { font-size: 18px; text-align: center; color: var(--hud-color); margin-bottom: 30px; letter-spacing: 2px; }
+
+.btn {
+    background: rgba(0, 50, 100, 0.3); border: 1px solid var(--hud-color); color: var(--hud-color);
+    padding: 15px 30px; font-size: 20px; font-family: monospace; cursor: pointer; transition: all 0.2s ease;
+    text-transform: uppercase; letter-spacing: 2px; position: relative; overflow: hidden; display: block; margin: 10px auto; width: 80%; max-width: 400px;
+}
+.btn:hover { background: var(--hud-color); color: #000; box-shadow: 0 0 20px var(--hud-color); transform: scale(1.02); }
+.btn:active { transform: scale(0.98); }
+.btn:disabled { border-color: #444; color: #666; background: #111; cursor: not-allowed; box-shadow: none; transform: none; }
+
+/* SHOP STYLES */
+.shop-layout { display: flex; gap: 20px; height: 60vh; width: 100%; margin-bottom: 20px;}
+.shop-nav { width: 250px; display: flex; flex-direction: column; gap: 10px; border-right: 1px solid #333; padding-right: 20px; overflow-y: auto; }
+.shop-nav-btn { background: transparent; border: 1px solid #444; color: #aaa; padding: 15px; text-align: left; cursor: pointer; transition: 0.2s; font-family: monospace; font-size: 16px; }
+.shop-nav-btn:hover { border-color: var(--hud-color); color: #fff; }
+.shop-nav-btn.active { border-color: var(--hud-color); background: rgba(0,255,200,0.1); color: var(--hud-color); border-left: 4px solid var(--hud-color); }
+
+.shop-content { flex: 1; overflow-y: auto; padding-left: 10px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; align-content: start; }
+.upgrade-card { background: rgba(0,0,0,0.6); border: 1px solid #444; padding: 20px; display: flex; flex-direction: column; position: relative; transition: 0.2s; }
+.upgrade-card:hover { border-color: #888; background: rgba(20,20,20,0.8); }
+.u-title { font-size: 18px; color: #fff; margin-bottom: 5px; text-transform: uppercase; }
+.u-desc { font-size: 12px; color: #aaa; margin-bottom: 15px; flex-grow: 1; line-height: 1.4; }
+.u-cost { font-size: 16px; color: var(--warn-color); margin-bottom: 10px; text-align: right; }
+.u-maxed { font-size: 16px; color: var(--hud-color); margin-bottom: 10px; text-align: right; }
+
+.tier-track { display: flex; gap: 4px; margin-bottom: 15px; width: 100%; }
+.tier-slot { flex: 1; height: 8px; background: #222; border: 1px solid #111; }
+.tier-slot.filled { background: var(--vec-color); box-shadow: 0 0 5px var(--vec-color); }
+.tier-slot.maxed { background: var(--warn-color); box-shadow: 0 0 5px var(--warn-color); }
+
+.buy-btn { width: 100%; background: #111; border: 1px solid var(--hud-color); color: var(--hud-color); padding: 12px; font-family: monospace; font-size: 16px; cursor: pointer; transition: 0.2s; text-transform: uppercase; }
+.buy-btn:hover:not(:disabled) { background: var(--hud-color); color: #000; }
+.buy-btn:disabled { opacity: 0.3; cursor: not-allowed; border-color: #444; color: #888; background: #000; }
+
+.stat-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: rgba(0,0,0,0.5); border-bottom: 1px solid #333; margin-bottom: 20px; }
+.funds-display { font-size: 24px; color: var(--warn-color); text-shadow: 0 0 10px var(--warn-color); }
+
+/* IN-GAME HUD OVERLAYS */
+#hud-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; display: none; }
+.telemetry-block { position: absolute; background: rgba(0,0,0,0.6); border: 1px solid #333; padding: 15px; font-family: monospace; font-size: 16px; color: var(--hud-color); text-shadow: 0 0 5px var(--hud-color); }
+#tl-block { top: 20px; left: 20px; border-left: 3px solid var(--hud-color); }
+#tr-block { top: 20px; right: 20px; border-right: 3px solid var(--hud-color); text-align: right; }
+.t-row { display: flex; justify-content: space-between; gap: 20px; margin-bottom: 8px; }
+.t-val { color: #fff; font-weight: bold; }
+.t-alert { color: var(--crit-color) !important; text-shadow: 0 0 10px var(--crit-color) !important; animation: blink 0.5s infinite; }
+.t-warn { color: var(--warn-color) !important; text-shadow: 0 0 10px var(--warn-color) !important; }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+.gauge-container { width: 100%; height: 10px; background: #111; border: 1px solid #333; margin-top: 5px; margin-bottom: 10px; position: relative; }
+.gauge-fill { height: 100%; transition: width 0.1s; }
+.gauge-markers { position: absolute; top:0; left:0; width:100%; height:100%; display: flex; justify-content: space-evenly; }
+.g-mark { width: 1px; height: 100%; background: rgba(255,255,255,0.2); }
+#g-fuel { background: linear-gradient(90deg, var(--crit-color), var(--warn-color)); }
+#g-hull { background: linear-gradient(90deg, var(--crit-color), var(--vec-color)); }
+
+/* MOBILE CONTROLS */
+#mobile-controls { position: absolute; bottom: 20px; left: 0; width: 100%; display: none; justify-content: space-between; padding: 0 30px; z-index: 90; pointer-events: none; }
+.m-btn-group { display: flex; gap: 15px; }
+.m-btn { width: 80px; height: 80px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.5); font-size: 30px; display: flex; justify-content: center; align-items: center; pointer-events: auto; touch-action: none; transition: 0.1s; backdrop-filter: blur(4px); }
+.m-btn:active { background: rgba(0,255,200,0.3); border-color: var(--hud-color); color: var(--hud-color); transform: scale(0.95); }
+.m-btn-thrust { width: 100px; height: 100px; border-color: rgba(255,170,0,0.3); color: rgba(255,170,0,0.5); }
+.m-btn-thrust:active { background: rgba(255,170,0,0.4); border-color: var(--warn-color); color: var(--warn-color); }
+@media (pointer: coarse) { #mobile-controls { display: flex; } }
+
+/* POST MATCH SCREEN */
+.post-stat-row { display: flex; justify-content: space-between; font-size: 20px; margin-bottom: 10px; color: #aaa; border-bottom: 1px dotted #333; padding-bottom: 5px; }
+.post-stat-val { color: #fff; font-weight: bold; }
+.post-total { margin-top: 20px; border-top: 2px solid #555; padding-top: 20px; font-size: 30px; color: var(--warn-color); text-align: right; }
+</style>
 </head>
 <body>
-    <canvas id="game-canvas"></canvas>
-    <div class="crt"></div>
+
+<div id="game-container">
+    <canvas id="cvs"></canvas>
+    <div class="crt-overlay"></div>
     <div class="scanlines"></div>
+    <div class="phosphor-glow"></div>
+    
+    <div id="hud-container">
+        <div class="telemetry-block" id="tl-block">
+            <div class="t-row"><span>ALT:</span><span id="h-alt" class="t-val">0000</span></div>
+            <div class="t-row"><span>H.VEL:</span><span id="h-vx" class="t-val">000</span></div>
+            <div class="t-row"><span>V.VEL:</span><span id="h-vy" class="t-val">000</span></div>
+            <div class="t-row"><span>PITCH:</span><span id="h-ang" class="t-val">000</span></div>
+            
+            <div style="margin-top: 15px; font-size: 12px; color: #888;">PROPELLANT</div>
+            <div class="gauge-container">
+                <div class="gauge-markers"><div class="g-mark"></div><div class="g-mark"></div><div class="g-mark"></div></div>
+                <div id="g-fuel" class="gauge-fill"></div>
+            </div>
+            <div style="margin-top: 5px; font-size: 12px; color: #888;">HULL INTEGRITY</div>
+            <div class="gauge-container">
+                <div class="gauge-markers"><div class="g-mark"></div><div class="g-mark"></div><div class="g-mark"></div></div>
+                <div id="g-hull" class="gauge-fill"></div>
+            </div>
+        </div>
+        
+        <div class="telemetry-block" id="tr-block">
+            <div class="t-row"><span>SCORE:</span><span id="h-score" class="t-val">00000</span></div>
+            <div class="t-row"><span>FUNDS:</span><span id="h-cred" class="t-val" style="color:var(--warn-color)">00000</span></div>
+            <div class="t-row"><span>SECTOR:</span><span id="h-sec" class="t-val">01</span></div>
+            <div class="t-row" style="margin-top: 10px; border-top: 1px solid #333; padding-top: 10px;">
+                <span id="h-status" style="width:100%; text-align:right; font-weight:bold;">NOMINAL</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="mobile-controls">
+        <div class="m-btn-group">
+            <div class="m-btn" id="btn-left">↶</div>
+            <div class="m-btn" id="btn-right">↷</div>
+        </div>
+        <div class="m-btn m-btn-thrust" id="btn-thrust">🔥</div>
+    </div>
+
+    <div id="ui-layer">
+        <div id="menu-screen" class="screen active-screen">
+            <div class="panel">
+                <div class="title-text">LUNAR LANDER</div>
+                <div class="sub-text">ADVANCED OPERATIONS OS v1.4.2</div>
+                <button class="btn" onclick="GAME.startMission()">INITIATE LAUNCH</button>
+                <button class="btn" onclick="UI.showScreen('shop-screen'); SHOP.render();">ENGINEERING BAY</button>
+                <button class="btn" onclick="UI.showScreen('stats-screen'); STATS.render();">FLIGHT LOGS</button>
+                <button class="btn" style="border-color: #444; color: #666; font-size: 14px; margin-top: 30px;" onclick="DATA.wipe()">FORMAT SYSTEM</button>
+            </div>
+        </div>
+
+        <div id="shop-screen" class="screen">
+            <div class="panel" style="width: 95%; max-width: 1200px; height: 85vh;">
+                <div class="stat-header">
+                    <div class="title-text" style="margin:0; font-size:32px;">ENGINEERING</div>
+                    <div class="funds-display"><span id="shop-funds">0</span> CR</div>
+                </div>
+                
+                <div class="shop-layout">
+                    <div class="shop-nav" id="shop-nav-container">
+                        </div>
+                    <div class="shop-content" id="shop-grid">
+                        </div>
+                </div>
+                
+                <button class="btn" style="margin: auto auto 0 auto; width: 300px;" onclick="UI.showScreen('menu-screen')">RETURN TO MENU</button>
+            </div>
+        </div>
+
+        <div id="stats-screen" class="screen">
+            <div class="panel" style="max-width: 600px;">
+                <div class="title-text" style="font-size: 32px;">FLIGHT ARCHIVE</div>
+                <div style="background: rgba(0,0,0,0.5); border: 1px solid #333; padding: 20px; font-size: 18px; line-height: 2.0; color: #aaa;" id="stats-content">
+                    </div>
+                <button class="btn" style="margin-top: 30px;" onclick="UI.showScreen('menu-screen')">RETURN</button>
+            </div>
+        </div>
+
+        <div id="fail-screen" class="screen">
+            <div class="panel" style="border-color: var(--crit-color); box-shadow: 0 0 40px rgba(255,0,0,0.2);">
+                <div class="title-text" style="color: var(--crit-color); text-shadow: 0 0 10px var(--crit-color);">MISSION FAILED</div>
+                <div class="sub-text" id="fail-reason" style="color: #fff;">HULL INTEGRITY COMPROMISED</div>
+                
+                <div style="background: rgba(0,0,0,0.5); padding: 20px; margin-bottom: 30px; border-left: 4px solid var(--crit-color);">
+                    <div class="post-stat-row"><span>PENALTY DEDUCTION:</span><span class="post-stat-val" style="color:var(--crit-color)" id="fail-penalty">0 CR</span></div>
+                </div>
+                
+                <button class="btn" style="border-color: var(--crit-color); color: var(--crit-color);" onclick="GAME.startMission()">RETRY LAUNCH</button>
+                <button class="btn" onclick="UI.showScreen('menu-screen')">ABORT TO MENU</button>
+            </div>
+        </div>
+
+        <div id="win-screen" class="screen">
+            <div class="panel" style="border-color: var(--vec-color);">
+                <div class="title-text" style="color: var(--vec-color);">TOUCHDOWN CONFIRMED</div>
+                <div class="sub-text" id="win-sub" style="color: #aaa;">VESSEL SECURED ON DROP ZONE</div>
+                
+                <div style="background: rgba(0,0,0,0.5); padding: 20px; margin-bottom: 30px; border: 1px solid #333;">
+                    <div class="post-stat-row"><span>BASE CONTRACT:</span><span class="post-stat-val" id="win-base">0 CR</span></div>
+                    <div class="post-stat-row"><span>LZ MULTIPLIER:</span><span class="post-stat-val" id="win-mult">x1.0</span></div>
+                    <div class="post-stat-row"><span>HULL BONUS:</span><span class="post-stat-val" id="win-hull" style="color:var(--hud-color)">0 CR</span></div>
+                    <div class="post-stat-row"><span>FUEL BONUS:</span><span class="post-stat-val" id="win-fuel" style="color:var(--hud-color)">0 CR</span></div>
+                    <div class="post-total">TOTAL TRANSFER: <span id="win-total" style="color:#fff;">0 CR</span></div>
+                </div>
+                
+                <button class="btn" style="border-color: var(--vec-color); color: var(--vec-color);" onclick="GAME.advanceSector()">PROCEED TO NEXT SECTOR</button>
+                <button class="btn" onclick="UI.showScreen('shop-screen'); SHOP.render();">ENGINEERING BAY</button>
+            </div>
+        </div>
+        
+        <div id="pause-screen" class="screen" style="background: rgba(0,0,0,0.85);">
+            <div class="title-text" style="font-size: 80px; color: #555; text-shadow: none;">SYSTEM PAUSED</div>
+            <button class="btn" style="width: 400px; font-size: 24px;" onclick="GAME.togglePause()">RESUME TELEMETRY</button>
+            <button class="btn" style="width: 400px; font-size: 24px; border-color: var(--crit-color); color: var(--crit-color);" onclick="GAME.abortMission()">ABORT MISSION</button>
+        </div>
+    </div>
+</div>
 
 <script>
 /**
- * VECTOR ARCADE ENGINE v1.0
- * Pure Canvas 2D Wireframe Implementation
- * Zero External Dependencies
+ * CORE ENGINE & MATH
  */
-
-// ============================================================================
-// ENGINE CONSTANTS & CONFIG
-// ============================================================================
-const CONFIG = {
-    FPS: 60,
-    PHYSICS_TIMESTEP: 1000 / 60,
-    MAX_FRAME_TIME: 250,
-    VECTOR_THICKNESS: 1.5,
-    GLOW_INTENSITY: 5,
-    COLOR_DRAW: '#eeeeee',
-    COLOR_BG: '#000000',
-    COLOR_PAD: '#ffffff',
-    COLOR_TEXT: '#dddddd',
-    GRAVITY: 0.012,
-    THRUST_POWER: 0.035,
-    ROTATION_SPEED: 0.045,
-    FUEL_CONSUMPTION: 0.5,
-    MAX_SAFE_LANDING_SPEED: 1.5,
-    MAX_SAFE_LANDING_ANGLE: 0.1,
-    SCALE_FACTOR: 1.0,
-    VIEWPORT_WIDTH: 1000,
-    VIEWPORT_HEIGHT: 700
+const CFG = {
+    FPS: 60, DT: 1000/60, MAX_DT: 100,
+    VIEW_W: 1600, VIEW_H: 1200,
+    VEC_W: 2.0, GLOW: 8,
+    GRAVITY: 0.0035, // Low gravity, floaty
+    BASE_THRUST: 0.015,
+    BASE_RCS: 0.0015,
+    ROT_FRICTION: 0.96,
+    MAX_SAFE_V: 1.5,
+    MAX_SAFE_H: 0.8,
+    MAX_SAFE_ANG: 0.15,
+    ZOOM_MAX: 3.0,
+    ZOOM_SPEED: 0.02
 };
 
-// ============================================================================
-// VECTOR MATH LIBRARY
-// ============================================================================
 class Vec2 {
-    constructor(x = 0, y = 0) { this.x = x; this.y = y; }
-    set(x, y) { this.x = x; this.y = y; return this; }
+    constructor(x=0, y=0) { this.x=x; this.y=y; }
+    set(x,y) { this.x=x; this.y=y; return this; }
     copy() { return new Vec2(this.x, this.y); }
-    add(v) { this.x += v.x; this.y += v.y; return this; }
-    addScaled(v, s) { this.x += v.x * s; this.y += v.y * s; return this; }
-    sub(v) { this.x -= v.x; this.y -= v.y; return this; }
-    mult(s) { this.x *= s; this.y *= s; return this; }
-    div(s) { if(s!==0){this.x /= s; this.y /= s;} return this; }
-    magSq() { return this.x * this.x + this.y * this.y; }
+    add(v) { this.x+=v.x; this.y+=v.y; return this; }
+    sub(v) { this.x-=v.x; this.y-=v.y; return this; }
+    mult(s) { this.x*=s; this.y*=s; return this; }
+    div(s) { if(s!==0){this.x/=s; this.y/=s;} return this; }
+    magSq() { return this.x*this.x + this.y*this.y; }
     mag() { return Math.sqrt(this.magSq()); }
-    normalize() { let m = this.mag(); if(m>0) this.div(m); return this; }
-    dot(v) { return this.x * v.x + this.y * v.y; }
-    cross(v) { return this.x * v.y - this.y * v.x; }
-    dist(v) { let dx = this.x - v.x, dy = this.y - v.y; return Math.sqrt(dx*dx + dy*dy); }
-    rotate(angle) {
-        let c = Math.cos(angle), s = Math.sin(angle);
-        let nx = this.x * c - this.y * s;
-        let ny = this.x * s + this.y * c;
-        this.x = nx; this.y = ny;
-        return this;
-    }
+    norm() { let m=this.mag(); if(m>0) this.div(m); return this; }
+    dot(v) { return this.x*v.x + this.y*v.y; }
+    dist(v) { let dx=this.x-v.x, dy=this.y-v.y; return Math.sqrt(dx*dx+dy*dy); }
+    rot(a) { let c=Math.cos(a), s=Math.sin(a), nx=this.x*c-this.y*s, ny=this.x*s+this.y*c; this.x=nx; this.y=ny; return this; }
 }
 
-const MathUtils = {
-    rand: (min, max) => Math.random() * (max - min) + min,
-    randInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
-    clamp: (val, min, max) => Math.max(min, Math.min(max, val)),
-    lerp: (a, b, t) => a + (b - a) * t,
-    padZero: (num, size) => { let s = num+""; while (s.length < size) s = "0" + s; return s; }
+const MathU = {
+    rand: (min,max) => Math.random()*(max-min)+min,
+    randInt: (min,max) => Math.floor(Math.random()*(max-min+1))+min,
+    clamp: (v,min,max) => Math.max(min, Math.min(max,v)),
+    lerp: (a,b,t) => a + (b-a)*t,
+    smoothstep: (min,max,v) => { let x = MathU.clamp((v-min)/(max-min), 0, 1); return x*x*(3 - 2*x); },
+    pad: (n,w,z='0') => { n=n+''; return n.length>=w ? n : new Array(w-n.length+1).join(z)+n; }
 };
 
-// ============================================================================
-// VECTOR ROM FONT (Authentic Arcade Line Data)
-// ============================================================================
-// Format: Array of line segments [ [x1,y1, x2,y2], ... ] based on a 10x14 grid
-const VECTOR_FONT = {
-    '0': [[0,0,10,0],[10,0,10,14],[10,14,0,14],[0,14,0,0],[10,0,0,14]],
-    '1': [[5,0,5,14],[3,4,5,0],[2,14,8,14]],
-    '2': [[0,0,10,0],[10,0,10,7],[10,7,0,7],[0,7,0,14],[0,14,10,14]],
-    '3': [[0,0,10,0],[10,0,10,14],[10,14,0,14],[0,7,10,7]],
-    '4': [[0,0,0,7],[0,7,10,7],[10,0,10,14]],
-    '5': [[10,0,0,0],[0,0,0,7],[0,7,10,7],[10,7,10,14],[10,14,0,14]],
-    '6': [[10,0,0,0],[0,0,0,14],[0,14,10,14],[10,14,10,7],[10,7,0,7]],
-    '7': [[0,0,10,0],[10,0,0,14]],
-    '8': [[0,0,10,0],[10,0,10,14],[10,14,0,14],[0,14,0,0],[0,7,10,7]],
-    '9': [[10,14,10,0],[10,0,0,0],[0,0,0,7],[0,7,10,7]],
-    'A': [[0,14,0,4],[0,4,5,0],[5,0,10,4],[10,4,10,14],[0,8,10,8]],
-    'B': [[0,0,8,0],[8,0,10,3],[10,3,10,4],[10,4,8,7],[8,7,0,7],[8,7,10,10],[10,10,10,11],[10,11,8,14],[8,14,0,14],[0,14,0,0]],
-    'C': [[10,0,0,0],[0,0,0,14],[0,14,10,14]],
-    'D': [[0,0,7,0],[7,0,10,3],[10,3,10,11],[10,11,7,14],[7,14,0,14],[0,14,0,0]],
-    'E': [[10,0,0,0],[0,0,0,14],[0,14,10,14],[0,7,8,7]],
-    'F': [[10,0,0,0],[0,0,0,14],[0,7,8,7]],
-    'G': [[10,0,0,0],[0,0,0,14],[0,14,10,14],[10,14,10,7],[10,7,5,7]],
-    'H': [[0,0,0,14],[10,0,10,14],[0,7,10,7]],
-    'I': [[0,0,10,0],[5,0,5,14],[0,14,10,14]],
-    'J': [[10,0,10,14],[10,14,0,14],[0,14,0,7]],
-    'K': [[0,0,0,14],[10,0,0,7],[0,7,10,14]],
-    'L': [[0,0,0,14],[0,14,10,14]],
-    'M': [[0,14,0,0],[0,0,5,7],[5,7,10,0],[10,0,10,14]],
-    'N': [[0,14,0,0],[0,0,10,14],[10,14,10,0]],
-    'O': [[0,0,10,0],[10,0,10,14],[10,14,0,14],[0,14,0,0]],
-    'P': [[0,14,0,0],[0,0,10,0],[10,0,10,7],[10,7,0,7]],
-    'Q': [[0,0,10,0],[10,0,10,14],[10,14,0,14],[0,14,0,0],[5,7,12,16]],
-    'R': [[0,14,0,0],[0,0,10,0],[10,0,10,7],[10,7,0,7],[5,7,10,14]],
-    'S': [[10,0,0,0],[0,0,0,7],[0,7,10,7],[10,7,10,14],[10,14,0,14]],
-    'T': [[0,0,10,0],[5,0,5,14]],
-    'U': [[0,0,0,14],[0,14,10,14],[10,14,10,0]],
-    'V': [[0,0,5,14],[5,14,10,0]],
-    'W': [[0,0,0,14],[0,14,5,7],[5,7,10,14],[10,14,10,0]],
-    'X': [[0,0,10,14],[10,0,0,14]],
-    'Y': [[0,0,5,7],[10,0,5,7],[5,7,5,14]],
-    'Z': [[0,0,10,0],[10,0,0,14],[0,14,10,14]],
-    ' ': [],
-    '.': [[4,14,6,14],[6,14,6,12],[6,12,4,12],[4,12,4,14]],
-    '-': [[2,7,8,7]],
-    ':': [[4,4,6,4],[6,4,6,6],[6,6,4,6],[4,6,4,4], [4,10,6,10],[6,10,6,12],[6,12,4,12],[4,12,4,10]]
-};
-
-class VectorRenderer {
-    constructor(canvasId) {
-        this.canvas = document.getElementById(canvasId);
-        this.ctx = this.canvas.getContext('2d', { alpha: false });
-        this.width = 0;
-        this.height = 0;
-        this.resize();
-        window.addEventListener('resize', () => this.resize());
-    }
-
-    resize() {
-        this.width = window.innerWidth;
-        this.height = window.innerHeight;
-        this.canvas.width = this.width;
-        this.canvas.height = this.height;
-        // Calculate scaling to keep aspect ratio authentic
-        let scaleX = this.width / CONFIG.VIEWPORT_WIDTH;
-        let scaleY = this.height / CONFIG.VIEWPORT_HEIGHT;
-        CONFIG.SCALE_FACTOR = Math.min(scaleX, scaleY);
-    }
-
-    clear() {
-        this.ctx.fillStyle = CONFIG.COLOR_BG;
-        this.ctx.fillRect(0, 0, this.width, this.height);
-    }
-
-    begin() {
-        this.ctx.save();
-        // Center the viewport
-        let offsetX = (this.width - (CONFIG.VIEWPORT_WIDTH * CONFIG.SCALE_FACTOR)) / 2;
-        let offsetY = (this.height - (CONFIG.VIEWPORT_HEIGHT * CONFIG.SCALE_FACTOR)) / 2;
-        this.ctx.translate(offsetX, offsetY);
-        this.ctx.scale(CONFIG.SCALE_FACTOR, CONFIG.SCALE_FACTOR);
-        
-        // Setup CRT Vector Line Style
-        this.ctx.strokeStyle = CONFIG.COLOR_DRAW;
-        this.ctx.lineWidth = CONFIG.VECTOR_THICKNESS;
-        this.ctx.lineCap = 'round';
-        this.ctx.lineJoin = 'round';
-        this.ctx.shadowBlur = CONFIG.GLOW_INTENSITY;
-        this.ctx.shadowColor = CONFIG.COLOR_DRAW;
-    }
-
-    end() {
-        this.ctx.restore();
-    }
-
-    drawLine(x1, y1, x2, y2) {
-        this.ctx.beginPath();
-        this.ctx.moveTo(x1, y1);
-        this.ctx.lineTo(x2, y2);
-        this.ctx.stroke();
-    }
-
-    drawPoly(pts, closed = false) {
-        if(pts.length < 2) return;
-        this.ctx.beginPath();
-        this.ctx.moveTo(pts[0].x, pts[0].y);
-        for(let i=1; i<pts.length; i++) {
-            this.ctx.lineTo(pts[i].x, pts[i].y);
-        }
-        if(closed) this.ctx.closePath();
-        this.ctx.stroke();
-    }
-
-    drawText(str, x, y, scale = 1, align = 'left') {
-        const charWidth = 10 * scale;
-        const charSpacing = 4 * scale;
-        let totalWidth = 0;
-        
-        if (align === 'right') {
-            totalWidth = (str.length * charWidth) + ((str.length - 1) * charSpacing);
-            x -= totalWidth;
-        } else if (align === 'center') {
-            totalWidth = (str.length * charWidth) + ((str.length - 1) * charSpacing);
-            x -= totalWidth / 2;
-        }
-
-        this.ctx.beginPath();
-        for (let i = 0; i < str.length; i++) {
-            let char = str[i].toUpperCase();
-            let data = VECTOR_FONT[char];
-            if (data) {
-                let cx = x + (i * (charWidth + charSpacing));
-                for (let j = 0; j < data.length; j++) {
-                    let line = data[j];
-                    this.ctx.moveTo(cx + line[0] * scale, y + line[1] * scale);
-                    this.ctx.lineTo(cx + line[2] * scale, y + line[3] * scale);
-                }
-            }
-        }
-        this.ctx.stroke();
-    }
-    
-    drawDot(x, y) {
-        this.ctx.fillStyle = CONFIG.COLOR_DRAW;
-        this.ctx.fillRect(x - 1, y - 1, 2, 2);
-    }
-}
-
-// ============================================================================
-// AUDIO SYNTHESIZER (Pure WebAudio API)
-// ============================================================================
-class AudioEngine {
-    constructor() {
-        this.ctx = null;
-        this.master = null;
-        this.initialized = false;
-        this.thrustOsc = null;
-        this.thrustGain = null;
-    }
-
-    init() {
-        if(this.initialized) return;
-        try {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            this.ctx = new AudioContext();
-            this.master = this.ctx.createGain();
-            this.master.gain.value = 0.3;
-            
-            // Retro compression
-            const comp = this.ctx.createDynamicsCompressor();
-            comp.threshold.value = -20;
-            comp.knee.value = 10;
-            comp.ratio.value = 12;
-            comp.attack.value = 0;
-            comp.release.value = 0.25;
-            
-            this.master.connect(comp);
-            comp.connect(this.ctx.destination);
-            this.initialized = true;
-        } catch(e) {}
-    }
-
-    playTone(freq, type, duration, vol=1.0) {
-        if(!this.initialized || this.ctx.state === 'suspended') return;
-        let osc = this.ctx.createOscillator();
-        let gain = this.ctx.createGain();
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
-        osc.connect(gain);
-        gain.connect(this.master);
-        osc.start();
-        osc.stop(this.ctx.currentTime + duration);
-    }
-
-    playNoise(duration, vol=1.0, lowpassFreq=1000) {
-        if(!this.initialized || this.ctx.state === 'suspended') return;
-        let bufferSize = this.ctx.sampleRate * duration;
-        let buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        let data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-        
-        let noise = this.ctx.createBufferSource();
-        noise.buffer = buffer;
-        let filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.value = lowpassFreq;
-        let gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
-        
-        noise.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.master);
-        noise.start();
-    }
-
-    startThrust() {
-        if(!this.initialized || this.thrustOsc) return;
-        this.thrustOsc = this.ctx.createOscillator();
-        this.thrustOsc.type = 'sawtooth';
-        this.thrustOsc.frequency.value = 40;
-        this.thrustGain = this.ctx.createGain();
-        this.thrustGain.gain.value = 0;
-        
-        let filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.value = 300;
-        
-        this.thrustOsc.connect(filter);
-        filter.connect(this.thrustGain);
-        this.thrustGain.connect(this.master);
-        
-        this.thrustOsc.start();
-        this.thrustGain.gain.setTargetAtTime(0.8, this.ctx.currentTime, 0.05);
-    }
-
-    stopThrust() {
-        if(!this.thrustOsc) return;
-        this.thrustGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
-        setTimeout(() => {
-            if(this.thrustOsc) {
-                this.thrustOsc.stop();
-                this.thrustOsc.disconnect();
-                this.thrustOsc = null;
-            }
-        }, 100);
-    }
-
-    sfxThrust() { this.playNoise(0.1, 0.2, 400); }
-    sfxCrash() { 
-        this.playNoise(1.5, 1.0, 800); 
-        this.playTone(50, 'square', 1.0, 0.8);
-        this.playTone(30, 'sawtooth', 1.5, 1.0);
-    }
-    sfxLand() { 
-        this.playTone(400, 'sine', 0.2, 0.3);
-        setTimeout(()=>this.playTone(600, 'sine', 0.4, 0.3), 150);
-    }
-    sfxAlert() { this.playTone(800, 'square', 0.1, 0.2); }
-    sfxScore() { this.playTone(1200, 'square', 0.05, 0.1); }
-}
-
-// ============================================================================
-// INPUT HANDLING
-// ============================================================================
-class Input {
-    constructor() {
-        this.keys = {};
-        this.mapped = { up: false, left: false, right: false, start: false };
-        
-        window.addEventListener('keydown', e => {
-            this.keys[e.code] = true;
-            this.updateMap();
-            audio.init();
-        });
-        window.addEventListener('keyup', e => {
-            this.keys[e.code] = false;
-            this.updateMap();
-        });
-        
-        // Touch controls
-        window.addEventListener('touchstart', e => {
-            audio.init();
-            for(let i=0; i<e.touches.length; i++) {
-                let t = e.touches[i];
-                if(t.clientY < window.innerHeight/2) this.mapped.start = true;
-                if(t.clientY > window.innerHeight/2) {
-                    if(t.clientX < window.innerWidth/3) this.mapped.left = true;
-                    else if(t.clientX > window.innerWidth*2/3) this.mapped.right = true;
-                    else this.mapped.up = true;
-                }
-            }
-        });
-        window.addEventListener('touchend', e => {
-            this.mapped.up = this.mapped.left = this.mapped.right = this.mapped.start = false;
-            for(let i=0; i<e.touches.length; i++) {
-                let t = e.touches[i];
-                if(t.clientY < window.innerHeight/2) this.mapped.start = true;
-                if(t.clientY > window.innerHeight/2) {
-                    if(t.clientX < window.innerWidth/3) this.mapped.left = true;
-                    else if(t.clientX > window.innerWidth*2/3) this.mapped.right = true;
-                    else this.mapped.up = true;
-                }
-            }
-        });
-    }
-    
-    updateMap() {
-        this.mapped.up = this.keys['ArrowUp'] || this.keys['KeyW'] || this.keys['Space'];
-        this.mapped.left = this.keys['ArrowLeft'] || this.keys['KeyA'];
-        this.mapped.right = this.keys['ArrowRight'] || this.keys['KeyD'];
-        this.mapped.start = this.keys['Enter'] || this.keys['Space'];
-    }
-}
-
-// ============================================================================
-// PHYSICS & COLLISION
-// ============================================================================
-class Segment {
-    constructor(x1, y1, x2, y2, isPad = false, multiplier = 1) {
-        this.p1 = new Vec2(x1, y1);
-        this.p2 = new Vec2(x2, y2);
-        this.isPad = isPad;
-        this.multiplier = multiplier;
-    }
-    
-    // Line intersection
-    intersect(p3, p4) {
-        let x1=this.p1.x, y1=this.p1.y, x2=this.p2.x, y2=this.p2.y;
-        let x3=p3.x, y3=p3.y, x4=p4.x, y4=p4.y;
-        
-        let den = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4);
-        if(den === 0) return null;
-        
-        let t = ((x1-x3)*(y3-y4) - (y1-y3)*(x3-x4)) / den;
-        let u = -((x1-x2)*(y1-y3) - (y1-y2)*(x1-x3)) / den;
-        
-        if(t >= 0 && t <= 1 && u >= 0 && u <= 1) {
-            return new Vec2(x1 + t*(x2-x1), y1 + t*(y2-y1));
-        }
-        return null;
-    }
-}
-
-// ============================================================================
-// ENTITIES
-// ============================================================================
-class Particle {
-    constructor(x, y, vx, vy, life) {
-        this.pos = new Vec2(x, y);
-        this.vel = new Vec2(vx, vy);
-        this.life = life;
-        this.maxLife = life;
-    }
-    update(dt) {
-        this.pos.add(new Vec2(this.vel.x*dt, this.vel.y*dt));
-        this.life -= dt;
-    }
-}
-
-class Ship {
-    constructor() {
-        this.pos = new Vec2(100, 100);
-        this.vel = new Vec2(1.5, 0);
-        this.angle = Math.PI / 2; // Pointing right initially
-        this.fuel = 1000;
-        this.status = 'FLYING'; // FLYING, LANDED, CRASHED
-        
-        // Define ship vector geometry (local space)
-        this.pts = [
-            new Vec2(0, -6),   // Nose
-            new Vec2(4, 4),    // Right wing
-            new Vec2(3, 6),    // Right foot
-            new Vec2(2, 4),    // Right engine inner
-            new Vec2(-2, 4),   // Left engine inner
-            new Vec2(-3, 6),   // Left foot
-            new Vec2(-4, 4)    // Left wing
-        ];
-        
-        this.flamePts = [
-            new Vec2(-2, 4),
-            new Vec2(0, 10),
-            new Vec2(2, 4)
-        ];
-        
-        this.worldPts = [];
-        this.updateWorldPts();
-    }
-    
-    reset(x, y) {
-        this.pos.set(x, y);
-        this.vel.set(1.5, 0);
-        this.angle = Math.PI / 2;
-        this.fuel = 1000;
-        this.status = 'FLYING';
-        this.updateWorldPts();
-    }
-
-    update(dt) {
-        if(this.status !== 'FLYING') return;
-
-        // Input application
-        if(input.mapped.left && this.fuel > 0) {
-            this.angle -= CONFIG.ROTATION_SPEED;
-            this.fuel -= CONFIG.FUEL_CONSUMPTION * 0.1;
-        }
-        if(input.mapped.right && this.fuel > 0) {
-            this.angle += CONFIG.ROTATION_SPEED;
-            this.fuel -= CONFIG.FUEL_CONSUMPTION * 0.1;
-        }
-        
-        let isThrusting = false;
-        if(input.mapped.up && this.fuel > 0) {
-            let thrustVec = new Vec2(0, -CONFIG.THRUST_POWER).rotate(this.angle);
-            this.vel.add(thrustVec);
-            this.fuel -= CONFIG.FUEL_CONSUMPTION;
-            isThrusting = true;
-            
-            // Particles
-            let ex = this.pos.x - Math.sin(this.angle)*4;
-            let ey = this.pos.y + Math.cos(this.angle)*4;
-            for(let i=0; i<2; i++) {
-                game.particles.push(new Particle(
-                    ex + MathUtils.rand(-1,1), 
-                    ey + MathUtils.rand(-1,1), 
-                    -this.vel.x + MathUtils.rand(-0.5,0.5), 
-                    -this.vel.y + MathUtils.rand(0.5,1.5), 
-                    MathUtils.rand(10, 30)
-                ));
-            }
-        }
-        
-        // Engine audio
-        if(isThrusting) audio.startThrust();
-        else audio.stopThrust();
-
-        // Gravity
-        this.vel.y += CONFIG.GRAVITY;
-
-        // Velocity integration
-        this.pos.addScaled(this.vel, dt);
-        
-        // Wrap screen horizontally
-        if(this.pos.x < 0) this.pos.x += CONFIG.VIEWPORT_WIDTH;
-        if(this.pos.x > CONFIG.VIEWPORT_WIDTH) this.pos.x -= CONFIG.VIEWPORT_WIDTH;
-        
-        // Hard ceiling
-        if(this.pos.y < 0) {
-            this.pos.y = 0;
-            this.vel.y = 0;
-        }
-
-        this.updateWorldPts();
-    }
-    
-    updateWorldPts() {
-        this.worldPts = this.pts.map(p => {
-            let wp = p.copy().rotate(this.angle);
-            return wp.add(this.pos);
-        });
-    }
-
-    draw(ren) {
-        if(this.status === 'CRASHED') return;
-        
-        ren.drawPoly(this.worldPts, true);
-        
-        // Draw thrust flame
-        if(this.status === 'FLYING' && input.mapped.up && this.fuel > 0) {
-            let flameW = this.flamePts.map(p => {
-                let p2 = p.copy();
-                if(p2.y > 4) p2.y = 4 + Math.random()*8; // flicker
-                return p2.rotate(this.angle).add(this.pos);
-            });
-            ren.drawPoly(flameW, false);
-        }
-    }
-}
-
-class Terrain {
-    constructor() {
-        this.segments = [];
-        this.generate();
-    }
-    
-    generate() {
-        this.segments = [];
-        let points = [];
-        const W = CONFIG.VIEWPORT_WIDTH;
-        const H = CONFIG.VIEWPORT_HEIGHT;
-        
-        // Base profile setup
-        points.push(new Vec2(0, H - 200));
-        
-        let curX = 0;
-        let pCount = 0;
-        
-        // Hardcoded flat pads layout mixed with noise
-        let padTargets = [
-            { x: W*0.15, w: 40, mult: 2 },
-            { x: W*0.5, w: 20, mult: 5 },
-            { x: W*0.8, w: 60, mult: 1 }
-        ];
-        
-        while(curX < W) {
-            // Check if we need to draw a pad
-            let makingPad = false;
-            for(let i=0; i<padTargets.length; i++) {
-                let t = padTargets[i];
-                if(curX >= t.x && curX < t.x + t.w) {
-                    let padY = points[points.length-1].y;
-                    let padEndX = t.x + t.w;
-                    points.push(new Vec2(padEndX, padY));
-                    this.segments.push(new Segment(curX, padY, padEndX, padY, true, t.mult));
-                    curX = padEndX;
-                    makingPad = true;
-                    padTargets.splice(i, 1);
-                    break;
-                }
-            }
-            
-            if(!makingPad) {
-                // Procedural jagged terrain
-                let stepX = MathUtils.rand(10, 30);
-                if(curX + stepX > W) stepX = W - curX;
-                
-                let lastY = points[points.length-1].y;
-                let stepY = MathUtils.rand(-60, 60);
-                
-                // Force peaks and valleys
-                if(lastY < H - 400) stepY = Math.abs(stepY); // Too high, go down
-                if(lastY > H - 50) stepY = -Math.abs(stepY); // Too low, go up
-                
-                // Stepped/Quantized look (Classic Arcade)
-                let nextX = curX + stepX;
-                let nextY = lastY + stepY;
-                
-                // We do orthogonal steps instead of diagonals to match the reference image exactly
-                let midX = curX;
-                let midY = nextY;
-                
-                if(Math.random() > 0.5) {
-                    midX = nextX;
-                    midY = lastY;
-                }
-                
-                // Create the two segments for the step
-                points.push(new Vec2(midX, midY));
-                this.segments.push(new Segment(curX, lastY, midX, midY, false));
-                
-                points.push(new Vec2(nextX, nextY));
-                this.segments.push(new Segment(midX, midY, nextX, nextY, false));
-                
-                curX = nextX;
-            }
-        }
-    }
-    
-    draw(ren) {
-        for(let s of this.segments) {
-            if(s.isPad) {
-                // Thicker/brighter line for pads, or blinking
-                if(Math.floor(Date.now() / 250) % 2 === 0) {
-                    ren.ctx.lineWidth = CONFIG.VECTOR_THICKNESS * 2;
-                }
-                ren.drawLine(s.p1.x, s.p1.y, s.p2.x, s.p2.y);
-                ren.ctx.lineWidth = CONFIG.VECTOR_THICKNESS;
-                
-                // Draw multiplier text under pad
-                ren.drawText(s.multiplier + "X", s.p1.x + (s.p2.x-s.p1.x)/2, s.p1.y + 10, 0.8, 'center');
-            } else {
-                ren.drawLine(s.p1.x, s.p1.y, s.p2.x, s.p2.y);
-            }
-        }
-    }
-}
-
-// ============================================================================
-// GAME MANAGER
-// ============================================================================
-const STATE = {
-    ATTRACT: 0,
-    PLAYING: 1,
-    LANDED: 2,
-    CRASHED: 3,
-    GAME_OVER: 4
-};
-
-class Game {
-    constructor() {
-        this.state = STATE.ATTRACT;
-        this.ship = new Ship();
-        this.terrain = new Terrain();
-        this.particles = [];
-        this.stars = [];
-        
-        this.score = 0;
-        this.time = 0;
-        this.lastTime = 0;
-        this.stateTimer = 0;
-        
-        this.initStars();
-    }
-    
-    initStars() {
-        this.stars = [];
-        for(let i=0; i<30; i++) {
-            this.stars.push(new Vec2(
-                MathUtils.rand(0, CONFIG.VIEWPORT_WIDTH),
-                MathUtils.rand(0, CONFIG.VIEWPORT_HEIGHT/2)
-            ));
-        }
-    }
-
-    start() {
-        this.score = 0;
-        this.time = 0;
-        this.startLevel();
-    }
-    
-    startLevel() {
-        this.terrain.generate();
-        this.ship.reset(100, 100);
-        this.particles = [];
-        this.state = STATE.PLAYING;
-    }
-
-    update(dt) {
-        // Star twinkling
-        if(Math.random() < 0.1) this.stars[MathUtils.randInt(0, this.stars.length-1)].opacity = Math.random();
-
-        // Particles
-        for(let i=this.particles.length-1; i>=0; i--) {
-            this.particles[i].update(dt);
-            if(this.particles[i].life <= 0) this.particles.splice(i, 1);
-        }
-
-        if(this.state === STATE.ATTRACT) {
-            // Fake AI / Demo mode
-            if(Math.random()<0.02) input.mapped.up = !input.mapped.up;
-            if(Math.random()<0.05) { input.mapped.left = true; input.mapped.right = false; }
-            else if(Math.random()<0.05) { input.mapped.right = true; input.mapped.left = false; }
-            else { input.mapped.left = false; input.mapped.right = false; }
-            
-            this.ship.update(dt);
-            this.checkCollisions();
-            
-            if(this.ship.status !== 'FLYING') {
-                setTimeout(() => { this.ship.reset(100,100); }, 2000);
-            }
-            
-            if(input.mapped.start) this.start();
-            return;
-        }
-
-        if(this.state === STATE.PLAYING) {
-            this.time += dt / 60; // Approximate seconds
-            this.ship.update(dt);
-            this.checkCollisions();
-            
-            if(this.ship.fuel <= 0 && this.ship.vel.y > 0) {
-                // Out of fuel, just falling
-            }
-        }
-        
-        if(this.state === STATE.CRASHED || this.state === STATE.LANDED) {
-            this.stateTimer -= dt;
-            if(this.stateTimer <= 0) {
-                if(this.ship.fuel <= 0 && this.state === STATE.CRASHED) {
-                    this.state = STATE.GAME_OVER;
-                } else {
-                    this.startLevel();
-                }
-            }
-        }
-        
-        if(this.state === STATE.GAME_OVER) {
-            if(input.mapped.start) {
-                this.state = STATE.ATTRACT;
-            }
-        }
-    }
-
-    checkCollisions() {
-        if(this.ship.status !== 'FLYING') return;
-
-        let crashed = false;
-        let landedOn = null;
-        
-        // Define bottom segment of ship for pad detection
-        let shipBottom = [this.ship.worldPts[2], this.ship.worldPts[5]];
-
-        // Broad phase: Check all ship lines against all terrain lines
-        for(let i=0; i<this.ship.worldPts.length; i++) {
-            let p1 = this.ship.worldPts[i];
-            let p2 = this.ship.worldPts[(i+1)%this.ship.worldPts.length];
-            
-            for(let seg of this.terrain.segments) {
-                let hit = seg.intersect(p1, p2);
-                if(hit) {
-                    // We hit something. Evaluate.
-                    let speed = this.ship.vel.mag();
-                    let isUpright = Math.abs(this.ship.angle % (Math.PI*2)) < CONFIG.MAX_SAFE_LANDING_ANGLE;
-                    
-                    // Specific check: Did the feet hit a pad?
-                    let feetHit = false;
-                    if(seg.isPad) {
-                         let hitLeft = seg.intersect(this.ship.worldPts[4], this.ship.worldPts[5]); // left leg
-                         let hitRight = seg.intersect(this.ship.worldPts[2], this.ship.worldPts[3]); // right leg
-                         if(hitLeft || hitRight) feetHit = true;
-                    }
-
-                    if(seg.isPad && isUpright && speed <= CONFIG.MAX_SAFE_LANDING_SPEED && feetHit) {
-                        landedOn = seg;
-                    } else {
-                        crashed = true;
-                    }
-                    break;
-                }
-            }
-            if(crashed || landedOn) break;
-        }
-
-        if(crashed) {
-            this.triggerCrash();
-        } else if(landedOn) {
-            this.triggerLand(landedOn);
-        }
-    }
-
-    triggerCrash() {
-        this.ship.status = 'CRASHED';
-        this.state = STATE.CRASHED;
-        this.stateTimer = 180; // 3 seconds at 60fps
-        audio.stopThrust();
-        audio.sfxCrash();
-        
-        // Explosion particles
-        for(let i=0; i<40; i++) {
-            this.particles.push(new Particle(
-                this.ship.pos.x, this.ship.pos.y,
-                MathUtils.rand(-3, 3), MathUtils.rand(-3, 3),
-                MathUtils.rand(20, 80)
-            ));
-        }
-        // Debris
-        for(let i=0; i<6; i++) {
-            this.particles.push(new Particle(
-                this.ship.pos.x, this.ship.pos.y,
-                MathUtils.rand(-1, 1), MathUtils.rand(-2, 0),
-                MathUtils.rand(60, 120)
-            ));
-        }
-    }
-
-    triggerLand(pad) {
-        this.ship.status = 'LANDED';
-        this.state = STATE.LANDED;
-        this.stateTimer = 180;
-        
-        // Snap to pad
-        this.ship.vel.set(0,0);
-        this.ship.angle = 0;
-        this.ship.updateWorldPts();
-        
-        audio.stopThrust();
-        audio.sfxLand();
-        
-        // Calculate score
-        let points = 50 * pad.multiplier;
-        if(this.ship.vel.y < 0.5) points += 50; // soft landing bonus
-        
-        this.score += points;
-        
-        // Award fuel
-        this.ship.fuel = Math.min(1000, this.ship.fuel + 200);
-        
-        setTimeout(() => audio.sfxScore(), 500);
-    }
-
-    draw(ren) {
-        ren.clear();
-        ren.begin();
-
-        // Stars
-        for(let s of this.stars) {
-            if(s.opacity === undefined) s.opacity = 1;
-            if(Math.random() > 0.5) ren.drawDot(s.x, s.y);
-        }
-
-        this.terrain.draw(ren);
-        this.ship.draw(ren);
-
-        // Particles
-        for(let p of this.particles) {
-            ren.drawDot(p.pos.x, p.pos.y);
-        }
-
-        // --- HUD RENDERING ---
-        
-        // Top Left
-        ren.drawText("SCORE " + MathUtils.padZero(this.score, 4), 20, 20, 1.5);
-        
-        let m = Math.floor(this.time / 60);
-        let s = Math.floor(this.time % 60);
-        ren.drawText("TIME  " + m + ":" + MathUtils.padZero(s, 2), 20, 45, 1.5);
-        
-        ren.drawText("FUEL  " + MathUtils.padZero(Math.floor(this.ship.fuel), 4), 20, 70, 1.5);
-
-        // Top Right
-        let alt = Math.max(0, CONFIG.VIEWPORT_HEIGHT - this.ship.pos.y - 150); // Rough altitude
-        ren.drawText("ALTITUDE", CONFIG.VIEWPORT_WIDTH - 250, 20, 1.5);
-        ren.drawText(MathUtils.padZero(Math.floor(alt), 4), CONFIG.VIEWPORT_WIDTH - 20, 20, 1.5, 'right');
-        
-        ren.drawText("HORIZONTAL SPEED", CONFIG.VIEWPORT_WIDTH - 250, 45, 1.5);
-        ren.drawText(MathUtils.padZero(Math.floor(Math.abs(this.ship.vel.x * 100)), 4), CONFIG.VIEWPORT_WIDTH - 20, 45, 1.5, 'right');
-        
-        ren.drawText("VERTICAL SPEED", CONFIG.VIEWPORT_WIDTH - 250, 70, 1.5);
-        ren.drawText(MathUtils.padZero(Math.floor(Math.abs(this.ship.vel.y * 100)), 4), CONFIG.VIEWPORT_WIDTH - 20, 70, 1.5, 'right');
-
-        // State Overlays
-        if(this.state === STATE.ATTRACT) {
-            ren.drawText("PUSH START", CONFIG.VIEWPORT_WIDTH/2, 200, 2.5, 'center');
-            ren.drawText("INSERT COIN", CONFIG.VIEWPORT_WIDTH/2, 250, 1.5, 'center');
-        } else if (this.state === STATE.CRASHED) {
-            ren.drawText("CONTACT IS LOST", CONFIG.VIEWPORT_WIDTH/2, 200, 2.5, 'center');
-        } else if (this.state === STATE.LANDED) {
-            ren.drawText("A PERFECT LANDING", CONFIG.VIEWPORT_WIDTH/2, 200, 2.5, 'center');
-        } else if (this.state === STATE.GAME_OVER) {
-            ren.drawText("GAME OVER", CONFIG.VIEWPORT_WIDTH/2, 200, 3.0, 'center');
-        }
-
-        // Bottom Footer
-        ren.drawText("PART OF THE LUNAR TRAILS ART PROJECT", 20, CONFIG.VIEWPORT_HEIGHT - 20, 1.0);
-        ren.drawText("SEB.LY", CONFIG.VIEWPORT_WIDTH - 20, CONFIG.VIEWPORT_HEIGHT - 20, 1.0, 'right');
-
-        ren.end();
-    }
-}
-
-// ============================================================================
-// BOOTSTRAP & MAIN LOOP
-// ============================================================================
-const renderer = new VectorRenderer('game-canvas');
-const input = new Input();
-const audio = new AudioEngine();
-const game = new Game();
-
-let lastTime = 0;
-function loop(timestamp) {
-    if(!lastTime) lastTime = timestamp;
-    let delta = timestamp - lastTime;
-    
-    // Cap delta to avoid spiral of death on tab switch
-    if(delta > CONFIG.MAX_FRAME_TIME) delta = CONFIG.MAX_FRAME_TIME;
-    lastTime = timestamp;
-    
-    // Fixed timestep logic (optional for pure retro, but good for physics)
-    let steps = Math.floor(delta / (1000/CONFIG.FPS));
-    if(steps === 0) steps = 1; // force at least one update
-    
-    for(let i=0; i<steps; i++) {
-        game.update(1); // 1 unit of time per physics tick
-    }
-    
-    game.draw(renderer);
-    requestAnimationFrame(loop);
-}
-
-// Start
-requestAnimationFrame(loop);
-
-</script>
-</body>
-</html><!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LUNAR LANDER</title>
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #000;
-            overflow: hidden;
-            touch-action: none;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-        #game-canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-            image-rendering: pixelated;
-        }
-        /* CRT Glow Effect */
-        .crt {
-            pointer-events: none;
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle at center, transparent 50%, rgba(0, 0, 0, 0.4) 100%);
-            box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
-            z-index: 10;
-        }
-        .scanlines {
-            pointer-events: none;
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
-            background-size: 100% 4px;
-            z-index: 11;
-        }
-    </style>
-</head>
-<body>
-    <canvas id="game-canvas"></canvas>
-    <div class="crt"></div>
-    <div class="scanlines"></div>
-
-<script>
 /**
- * VECTOR ARCADE ENGINE v1.0
- * Pure Canvas 2D Wireframe Implementation
- * Zero External Dependencies
+ * AUDIO SYNTHESIS ENGINE
+ * Procedural generation using Web Audio API. Zero assets.
  */
+const AUDIO = (() => {
+    let ctx, master, comp, init = false;
+    let thrustOsc, thrustGain, thrustFilter, thrustNoise;
 
-// ============================================================================
-// ENGINE CONSTANTS & CONFIG
-// ============================================================================
-const CONFIG = {
-    FPS: 60,
-    PHYSICS_TIMESTEP: 1000 / 60,
-    MAX_FRAME_TIME: 250,
-    VECTOR_THICKNESS: 1.5,
-    GLOW_INTENSITY: 5,
-    COLOR_DRAW: '#eeeeee',
-    COLOR_BG: '#000000',
-    COLOR_PAD: '#ffffff',
-    COLOR_TEXT: '#dddddd',
-    GRAVITY: 0.012,
-    THRUST_POWER: 0.035,
-    ROTATION_SPEED: 0.045,
-    FUEL_CONSUMPTION: 0.5,
-    MAX_SAFE_LANDING_SPEED: 1.5,
-    MAX_SAFE_LANDING_ANGLE: 0.1,
-    SCALE_FACTOR: 1.0,
-    VIEWPORT_WIDTH: 1000,
-    VIEWPORT_HEIGHT: 700
-};
-
-// ============================================================================
-// VECTOR MATH LIBRARY
-// ============================================================================
-class Vec2 {
-    constructor(x = 0, y = 0) { this.x = x; this.y = y; }
-    set(x, y) { this.x = x; this.y = y; return this; }
-    copy() { return new Vec2(this.x, this.y); }
-    add(v) { this.x += v.x; this.y += v.y; return this; }
-    addScaled(v, s) { this.x += v.x * s; this.y += v.y * s; return this; }
-    sub(v) { this.x -= v.x; this.y -= v.y; return this; }
-    mult(s) { this.x *= s; this.y *= s; return this; }
-    div(s) { if(s!==0){this.x /= s; this.y /= s;} return this; }
-    magSq() { return this.x * this.x + this.y * this.y; }
-    mag() { return Math.sqrt(this.magSq()); }
-    normalize() { let m = this.mag(); if(m>0) this.div(m); return this; }
-    dot(v) { return this.x * v.x + this.y * v.y; }
-    cross(v) { return this.x * v.y - this.y * v.x; }
-    dist(v) { let dx = this.x - v.x, dy = this.y - v.y; return Math.sqrt(dx*dx + dy*dy); }
-    rotate(angle) {
-        let c = Math.cos(angle), s = Math.sin(angle);
-        let nx = this.x * c - this.y * s;
-        let ny = this.x * s + this.y * c;
-        this.x = nx; this.y = ny;
-        return this;
-    }
-}
-
-const MathUtils = {
-    rand: (min, max) => Math.random() * (max - min) + min,
-    randInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
-    clamp: (val, min, max) => Math.max(min, Math.min(max, val)),
-    lerp: (a, b, t) => a + (b - a) * t,
-    padZero: (num, size) => { let s = num+""; while (s.length < size) s = "0" + s; return s; }
-};
-
-// ============================================================================
-// VECTOR ROM FONT (Authentic Arcade Line Data)
-// ============================================================================
-// Format: Array of line segments [ [x1,y1, x2,y2], ... ] based on a 10x14 grid
-const VECTOR_FONT = {
-    '0': [[0,0,10,0],[10,0,10,14],[10,14,0,14],[0,14,0,0],[10,0,0,14]],
-    '1': [[5,0,5,14],[3,4,5,0],[2,14,8,14]],
-    '2': [[0,0,10,0],[10,0,10,7],[10,7,0,7],[0,7,0,14],[0,14,10,14]],
-    '3': [[0,0,10,0],[10,0,10,14],[10,14,0,14],[0,7,10,7]],
-    '4': [[0,0,0,7],[0,7,10,7],[10,0,10,14]],
-    '5': [[10,0,0,0],[0,0,0,7],[0,7,10,7],[10,7,10,14],[10,14,0,14]],
-    '6': [[10,0,0,0],[0,0,0,14],[0,14,10,14],[10,14,10,7],[10,7,0,7]],
-    '7': [[0,0,10,0],[10,0,0,14]],
-    '8': [[0,0,10,0],[10,0,10,14],[10,14,0,14],[0,14,0,0],[0,7,10,7]],
-    '9': [[10,14,10,0],[10,0,0,0],[0,0,0,7],[0,7,10,7]],
-    'A': [[0,14,0,4],[0,4,5,0],[5,0,10,4],[10,4,10,14],[0,8,10,8]],
-    'B': [[0,0,8,0],[8,0,10,3],[10,3,10,4],[10,4,8,7],[8,7,0,7],[8,7,10,10],[10,10,10,11],[10,11,8,14],[8,14,0,14],[0,14,0,0]],
-    'C': [[10,0,0,0],[0,0,0,14],[0,14,10,14]],
-    'D': [[0,0,7,0],[7,0,10,3],[10,3,10,11],[10,11,7,14],[7,14,0,14],[0,14,0,0]],
-    'E': [[10,0,0,0],[0,0,0,14],[0,14,10,14],[0,7,8,7]],
-    'F': [[10,0,0,0],[0,0,0,14],[0,7,8,7]],
-    'G': [[10,0,0,0],[0,0,0,14],[0,14,10,14],[10,14,10,7],[10,7,5,7]],
-    'H': [[0,0,0,14],[10,0,10,14],[0,7,10,7]],
-    'I': [[0,0,10,0],[5,0,5,14],[0,14,10,14]],
-    'J': [[10,0,10,14],[10,14,0,14],[0,14,0,7]],
-    'K': [[0,0,0,14],[10,0,0,7],[0,7,10,14]],
-    'L': [[0,0,0,14],[0,14,10,14]],
-    'M': [[0,14,0,0],[0,0,5,7],[5,7,10,0],[10,0,10,14]],
-    'N': [[0,14,0,0],[0,0,10,14],[10,14,10,0]],
-    'O': [[0,0,10,0],[10,0,10,14],[10,14,0,14],[0,14,0,0]],
-    'P': [[0,14,0,0],[0,0,10,0],[10,0,10,7],[10,7,0,7]],
-    'Q': [[0,0,10,0],[10,0,10,14],[10,14,0,14],[0,14,0,0],[5,7,12,16]],
-    'R': [[0,14,0,0],[0,0,10,0],[10,0,10,7],[10,7,0,7],[5,7,10,14]],
-    'S': [[10,0,0,0],[0,0,0,7],[0,7,10,7],[10,7,10,14],[10,14,0,14]],
-    'T': [[0,0,10,0],[5,0,5,14]],
-    'U': [[0,0,0,14],[0,14,10,14],[10,14,10,0]],
-    'V': [[0,0,5,14],[5,14,10,0]],
-    'W': [[0,0,0,14],[0,14,5,7],[5,7,10,14],[10,14,10,0]],
-    'X': [[0,0,10,14],[10,0,0,14]],
-    'Y': [[0,0,5,7],[10,0,5,7],[5,7,5,14]],
-    'Z': [[0,0,10,0],[10,0,0,14],[0,14,10,14]],
-    ' ': [],
-    '.': [[4,14,6,14],[6,14,6,12],[6,12,4,12],[4,12,4,14]],
-    '-': [[2,7,8,7]],
-    ':': [[4,4,6,4],[6,4,6,6],[6,6,4,6],[4,6,4,4], [4,10,6,10],[6,10,6,12],[6,12,4,12],[4,12,4,10]]
-};
-
-class VectorRenderer {
-    constructor(canvasId) {
-        this.canvas = document.getElementById(canvasId);
-        this.ctx = this.canvas.getContext('2d', { alpha: false });
-        this.width = 0;
-        this.height = 0;
-        this.resize();
-        window.addEventListener('resize', () => this.resize());
-    }
-
-    resize() {
-        this.width = window.innerWidth;
-        this.height = window.innerHeight;
-        this.canvas.width = this.width;
-        this.canvas.height = this.height;
-        // Calculate scaling to keep aspect ratio authentic
-        let scaleX = this.width / CONFIG.VIEWPORT_WIDTH;
-        let scaleY = this.height / CONFIG.VIEWPORT_HEIGHT;
-        CONFIG.SCALE_FACTOR = Math.min(scaleX, scaleY);
-    }
-
-    clear() {
-        this.ctx.fillStyle = CONFIG.COLOR_BG;
-        this.ctx.fillRect(0, 0, this.width, this.height);
-    }
-
-    begin() {
-        this.ctx.save();
-        // Center the viewport
-        let offsetX = (this.width - (CONFIG.VIEWPORT_WIDTH * CONFIG.SCALE_FACTOR)) / 2;
-        let offsetY = (this.height - (CONFIG.VIEWPORT_HEIGHT * CONFIG.SCALE_FACTOR)) / 2;
-        this.ctx.translate(offsetX, offsetY);
-        this.ctx.scale(CONFIG.SCALE_FACTOR, CONFIG.SCALE_FACTOR);
-        
-        // Setup CRT Vector Line Style
-        this.ctx.strokeStyle = CONFIG.COLOR_DRAW;
-        this.ctx.lineWidth = CONFIG.VECTOR_THICKNESS;
-        this.ctx.lineCap = 'round';
-        this.ctx.lineJoin = 'round';
-        this.ctx.shadowBlur = CONFIG.GLOW_INTENSITY;
-        this.ctx.shadowColor = CONFIG.COLOR_DRAW;
-    }
-
-    end() {
-        this.ctx.restore();
-    }
-
-    drawLine(x1, y1, x2, y2) {
-        this.ctx.beginPath();
-        this.ctx.moveTo(x1, y1);
-        this.ctx.lineTo(x2, y2);
-        this.ctx.stroke();
-    }
-
-    drawPoly(pts, closed = false) {
-        if(pts.length < 2) return;
-        this.ctx.beginPath();
-        this.ctx.moveTo(pts[0].x, pts[0].y);
-        for(let i=1; i<pts.length; i++) {
-            this.ctx.lineTo(pts[i].x, pts[i].y);
-        }
-        if(closed) this.ctx.closePath();
-        this.ctx.stroke();
-    }
-
-    drawText(str, x, y, scale = 1, align = 'left') {
-        const charWidth = 10 * scale;
-        const charSpacing = 4 * scale;
-        let totalWidth = 0;
-        
-        if (align === 'right') {
-            totalWidth = (str.length * charWidth) + ((str.length - 1) * charSpacing);
-            x -= totalWidth;
-        } else if (align === 'center') {
-            totalWidth = (str.length * charWidth) + ((str.length - 1) * charSpacing);
-            x -= totalWidth / 2;
-        }
-
-        this.ctx.beginPath();
-        for (let i = 0; i < str.length; i++) {
-            let char = str[i].toUpperCase();
-            let data = VECTOR_FONT[char];
-            if (data) {
-                let cx = x + (i * (charWidth + charSpacing));
-                for (let j = 0; j < data.length; j++) {
-                    let line = data[j];
-                    this.ctx.moveTo(cx + line[0] * scale, y + line[1] * scale);
-                    this.ctx.lineTo(cx + line[2] * scale, y + line[3] * scale);
-                }
-            }
-        }
-        this.ctx.stroke();
-    }
-    
-    drawDot(x, y) {
-        this.ctx.fillStyle = CONFIG.COLOR_DRAW;
-        this.ctx.fillRect(x - 1, y - 1, 2, 2);
-    }
-}
-
-// ============================================================================
-// AUDIO SYNTHESIZER (Pure WebAudio API)
-// ============================================================================
-class AudioEngine {
-    constructor() {
-        this.ctx = null;
-        this.master = null;
-        this.initialized = false;
-        this.thrustOsc = null;
-        this.thrustGain = null;
-    }
-
-    init() {
-        if(this.initialized) return;
+    const start = () => {
+        if(init) return;
         try {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            this.ctx = new AudioContext();
-            this.master = this.ctx.createGain();
-            this.master.gain.value = 0.3;
-            
-            // Retro compression
-            const comp = this.ctx.createDynamicsCompressor();
-            comp.threshold.value = -20;
-            comp.knee.value = 10;
-            comp.ratio.value = 12;
-            comp.attack.value = 0;
-            comp.release.value = 0.25;
-            
-            this.master.connect(comp);
-            comp.connect(this.ctx.destination);
-            this.initialized = true;
-        } catch(e) {}
-    }
+            window.AudioContext = window.AudioContext || window.webkitAudioContext;
+            ctx = new AudioContext();
+            master = ctx.createGain(); master.gain.value = 0.5;
+            comp = ctx.createDynamicsCompressor();
+            comp.threshold.value = -24; comp.knee.value = 30; comp.ratio.value = 12;
+            comp.attack.value = 0.003; comp.release.value = 0.25;
+            master.connect(comp); comp.connect(ctx.destination);
+            init = true;
+        } catch(e) { console.log("Audio failed"); }
+    };
 
-    playTone(freq, type, duration, vol=1.0) {
-        if(!this.initialized || this.ctx.state === 'suspended') return;
-        let osc = this.ctx.createOscillator();
-        let gain = this.ctx.createGain();
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
-        osc.connect(gain);
-        gain.connect(this.master);
-        osc.start();
-        osc.stop(this.ctx.currentTime + duration);
-    }
-
-    playNoise(duration, vol=1.0, lowpassFreq=1000) {
-        if(!this.initialized || this.ctx.state === 'suspended') return;
-        let bufferSize = this.ctx.sampleRate * duration;
-        let buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        let data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    const playTone = (freq, type, dur, vol, slideTo=null, noise=false) => {
+        if(!init || ctx.state==='suspended') return;
+        let osc = ctx.createOscillator();
+        let gain = ctx.createGain();
         
-        let noise = this.ctx.createBufferSource();
-        noise.buffer = buffer;
-        let filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.value = lowpassFreq;
-        let gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
-        
-        noise.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.master);
-        noise.start();
-    }
-
-    startThrust() {
-        if(!this.initialized || this.thrustOsc) return;
-        this.thrustOsc = this.ctx.createOscillator();
-        this.thrustOsc.type = 'sawtooth';
-        this.thrustOsc.frequency.value = 40;
-        this.thrustGain = this.ctx.createGain();
-        this.thrustGain.gain.value = 0;
-        
-        let filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.value = 300;
-        
-        this.thrustOsc.connect(filter);
-        filter.connect(this.thrustGain);
-        this.thrustGain.connect(this.master);
-        
-        this.thrustOsc.start();
-        this.thrustGain.gain.setTargetAtTime(0.8, this.ctx.currentTime, 0.05);
-    }
-
-    stopThrust() {
-        if(!this.thrustOsc) return;
-        this.thrustGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
-        setTimeout(() => {
-            if(this.thrustOsc) {
-                this.thrustOsc.stop();
-                this.thrustOsc.disconnect();
-                this.thrustOsc = null;
-            }
-        }, 100);
-    }
-
-    sfxThrust() { this.playNoise(0.1, 0.2, 400); }
-    sfxCrash() { 
-        this.playNoise(1.5, 1.0, 800); 
-        this.playTone(50, 'square', 1.0, 0.8);
-        this.playTone(30, 'sawtooth', 1.5, 1.0);
-    }
-    sfxLand() { 
-        this.playTone(400, 'sine', 0.2, 0.3);
-        setTimeout(()=>this.playTone(600, 'sine', 0.4, 0.3), 150);
-    }
-    sfxAlert() { this.playTone(800, 'square', 0.1, 0.2); }
-    sfxScore() { this.playTone(1200, 'square', 0.05, 0.1); }
-}
-
-// ============================================================================
-// INPUT HANDLING
-// ============================================================================
-class Input {
-    constructor() {
-        this.keys = {};
-        this.mapped = { up: false, left: false, right: false, start: false };
-        
-        window.addEventListener('keydown', e => {
-            this.keys[e.code] = true;
-            this.updateMap();
-            audio.init();
-        });
-        window.addEventListener('keyup', e => {
-            this.keys[e.code] = false;
-            this.updateMap();
-        });
-        
-        // Touch controls
-        window.addEventListener('touchstart', e => {
-            audio.init();
-            for(let i=0; i<e.touches.length; i++) {
-                let t = e.touches[i];
-                if(t.clientY < window.innerHeight/2) this.mapped.start = true;
-                if(t.clientY > window.innerHeight/2) {
-                    if(t.clientX < window.innerWidth/3) this.mapped.left = true;
-                    else if(t.clientX > window.innerWidth*2/3) this.mapped.right = true;
-                    else this.mapped.up = true;
-                }
-            }
-        });
-        window.addEventListener('touchend', e => {
-            this.mapped.up = this.mapped.left = this.mapped.right = this.mapped.start = false;
-            for(let i=0; i<e.touches.length; i++) {
-                let t = e.touches[i];
-                if(t.clientY < window.innerHeight/2) this.mapped.start = true;
-                if(t.clientY > window.innerHeight/2) {
-                    if(t.clientX < window.innerWidth/3) this.mapped.left = true;
-                    else if(t.clientX > window.innerWidth*2/3) this.mapped.right = true;
-                    else this.mapped.up = true;
-                }
-            }
-        });
-    }
-    
-    updateMap() {
-        this.mapped.up = this.keys['ArrowUp'] || this.keys['KeyW'] || this.keys['Space'];
-        this.mapped.left = this.keys['ArrowLeft'] || this.keys['KeyA'];
-        this.mapped.right = this.keys['ArrowRight'] || this.keys['KeyD'];
-        this.mapped.start = this.keys['Enter'] || this.keys['Space'];
-    }
-}
-
-// ============================================================================
-// PHYSICS & COLLISION
-// ============================================================================
-class Segment {
-    constructor(x1, y1, x2, y2, isPad = false, multiplier = 1) {
-        this.p1 = new Vec2(x1, y1);
-        this.p2 = new Vec2(x2, y2);
-        this.isPad = isPad;
-        this.multiplier = multiplier;
-    }
-    
-    // Line intersection
-    intersect(p3, p4) {
-        let x1=this.p1.x, y1=this.p1.y, x2=this.p2.x, y2=this.p2.y;
-        let x3=p3.x, y3=p3.y, x4=p4.x, y4=p4.y;
-        
-        let den = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4);
-        if(den === 0) return null;
-        
-        let t = ((x1-x3)*(y3-y4) - (y1-y3)*(x3-x4)) / den;
-        let u = -((x1-x2)*(y1-y3) - (y1-y2)*(x1-x3)) / den;
-        
-        if(t >= 0 && t <= 1 && u >= 0 && u <= 1) {
-            return new Vec2(x1 + t*(x2-x1), y1 + t*(y2-y1));
+        if(noise) {
+            let bs = ctx.sampleRate * dur;
+            let buf = ctx.createBuffer(1, bs, ctx.sampleRate);
+            let dat = buf.getChannelData(0);
+            for(let i=0; i<bs; i++) dat[i] = Math.random()*2-1;
+            let ns = ctx.createBufferSource(); ns.buffer = buf;
+            let fil = ctx.createBiquadFilter(); fil.type = type; fil.frequency.value = freq;
+            ns.connect(fil); fil.connect(gain); ns.start(); ns.stop(ctx.currentTime+dur);
+        } else {
+            osc.type = type; osc.frequency.setValueAtTime(freq, ctx.currentTime);
+            if(slideTo) osc.frequency.exponentialRampToValueAtTime(Math.max(1, slideTo), ctx.currentTime+dur);
+            osc.connect(gain); osc.start(); osc.stop(ctx.currentTime+dur);
         }
-        return null;
+        
+        gain.gain.setValueAtTime(vol, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime+dur);
+        gain.connect(master);
+    };
+
+    return {
+        init: start,
+        resume: () => { if(ctx && ctx.state==='suspended') ctx.resume(); },
+        tOn: (throttle=1) => {
+            if(!init) return;
+            if(!thrustOsc) {
+                thrustOsc = ctx.createOscillator(); thrustOsc.type = 'sawtooth'; thrustOsc.frequency.value = 30;
+                let bs = ctx.sampleRate * 2; let buf = ctx.createBuffer(1, bs, ctx.sampleRate);
+                let dat = buf.getChannelData(0); for(let i=0; i<bs; i++) dat[i] = Math.random()*2-1;
+                thrustNoise = ctx.createBufferSource(); thrustNoise.buffer = buf; thrustNoise.loop = true;
+                thrustFilter = ctx.createBiquadFilter(); thrustFilter.type = 'lowpass';
+                thrustGain = ctx.createGain(); thrustGain.gain.value = 0;
+                thrustOsc.connect(thrustGain); thrustNoise.connect(thrustFilter); thrustFilter.connect(thrustGain);
+                thrustGain.connect(master);
+                thrustOsc.start(); thrustNoise.start();
+            }
+            thrustOsc.frequency.setTargetAtTime(30 + throttle*40, ctx.currentTime, 0.1);
+            thrustFilter.frequency.setTargetAtTime(100 + throttle*600, ctx.currentTime, 0.1);
+            thrustGain.gain.setTargetAtTime(0.1 + throttle*0.3, ctx.currentTime, 0.1);
+        },
+        tOff: () => {
+            if(!thrustOsc) return;
+            thrustGain.gain.setTargetAtTime(0, ctx.currentTime, 0.1);
+            setTimeout(() => { 
+                if(thrustOsc){ thrustOsc.stop(); thrustOsc.disconnect(); thrustOsc=null; }
+                if(thrustNoise){ thrustNoise.stop(); thrustNoise.disconnect(); thrustNoise=null; }
+            }, 150);
+        },
+        rcs: () => { if(Math.random()<0.3) playTone(800, 'highpass', 0.05, 0.1, null, true); },
+        crash: (sev=1) => { 
+            playTone(80, 'sawtooth', 1.5*sev, 0.8*sev, 10); 
+            playTone(40, 'square', 2.0*sev, 0.6*sev, 5); 
+            playTone(300, 'lowpass', 1.5*sev, 0.7*sev, null, true); 
+        },
+        land: () => { playTone(200, 'sine', 0.4, 0.3, 50); playTone(400, 'sine', 0.3, 0.2, 100); },
+        alert: () => { playTone(600, 'square', 0.2, 0.2, 600); },
+        win: () => { playTone(440, 'square', 0.1, 0.1); setTimeout(()=>playTone(554, 'square', 0.1, 0.1), 100); setTimeout(()=>playTone(659, 'square', 0.4, 0.2), 200); },
+        click: () => playTone(1200, 'sine', 0.05, 0.1),
+        buy: () => playTone(800, 'sine', 0.3, 0.1, 2000)
+    };
+})();
+
+/**
+ * PERSISTENCE & DATA MANAGEMENT
+ */
+const DATA = (() => {
+    const DEF = {
+        cr: 1000, sec: 1, 
+        stat: { fl: 0, crsh: 0, sc: 0, totCr: 0 },
+        upg: { 
+            eng: 0, rcs: 0, tank: 0, eff: 0, // Propulsion
+            hull: 0, gear: 0, // Structure
+            sens: 0 // Avionics
+        }
+    };
+    let d = JSON.parse(localStorage.getItem('ll_os_v1')) || JSON.parse(JSON.stringify(DEF));
+    
+    return {
+        get: () => d,
+        save: () => localStorage.setItem('ll_os_v1', JSON.stringify(d)),
+        wipe: () => { if(confirm("SECURE ERASE?")) { localStorage.removeItem('ll_os_v1'); location.reload(); } }
+    };
+})();
+
+/**
+ * UPGRADE SYSTEM / SHOP
+ */
+const SHOP = (() => {
+    const CATS = { prop: "PROPULSION", struc: "STRUCTURE", avion: "AVIONICS" };
+    const MANIFEST = {
+        eng: { c: 'prop', n: "V-Thrust Core", d: "Increases main engine acceleration vector.", max: 10, b: 250, m: 1.4, f: t => 1.0 + (t*0.15) },
+        rcs: { c: 'prop', n: "RCS Torque", d: "Increases rotational speed for pitch correction.", max: 8, b: 150, m: 1.35, f: t => 1.0 + (t*0.2) },
+        tank: { c: 'prop', n: "Volume Tanks", d: "Expands maximum propellant capacity.", max: 10, b: 200, m: 1.3, f: t => 1000 + (t*250) },
+        eff: { c: 'prop', n: "Injector Eff.", d: "Reduces fuel consumption rate.", max: 5, b: 500, m: 1.8, f: t => 1.0 - (t*0.12) },
+        hull: { c: 'struc', n: "Alloy Hull", d: "Increases structural hitpoints to survive impacts.", max: 8, b: 300, m: 1.5, f: t => 100 + (t*50) },
+        gear: { c: 'struc', n: "Hydraulics", d: "Increases safe landing velocity threshold.", max: 5, b: 600, m: 1.6, f: t => 1.0 + (t*0.25) },
+        sens: { c: 'avion', n: "Deep Radar", d: "Increases camera zoom out range to see LZs sooner.", max: 4, b: 800, m: 1.8, f: t => 1.0 + (t*0.2) }
+    };
+
+    let curCat = 'prop';
+
+    const getUpg = id => MANIFEST[id].f(DATA.get().upg[id]);
+    const getCost = id => { let t = DATA.get().upg[id]; return t >= MANIFEST[id].max ? -1 : Math.floor(MANIFEST[id].b * Math.pow(MANIFEST[id].m, t)); };
+
+    const render = () => {
+        document.getElementById('shop-funds').innerText = DATA.get().cr;
+        
+        // Nav
+        let nav = document.getElementById('shop-nav-container');
+        nav.innerHTML = '';
+        for(let k in CATS) {
+            let b = document.createElement('button');
+            b.className = `shop-nav-btn ${curCat === k ? 'active' : ''}`;
+            b.innerText = CATS[k];
+            b.onclick = () => { AUDIO.click(); curCat = k; render(); };
+            nav.appendChild(b);
+        }
+
+        // Grid
+        let grid = document.getElementById('shop-grid');
+        grid.innerHTML = '';
+        for(let k in MANIFEST) {
+            if(MANIFEST[k].c !== curCat) continue;
+            let m = MANIFEST[k];
+            let lvl = DATA.get().upg[k];
+            let cost = getCost(k);
+            let isMax = cost === -1;
+            let canBuy = !isMax && DATA.get().cr >= cost;
+
+            let pips = '';
+            for(let i=0; i<m.max; i++) pips += `<div class="tier-slot ${i<lvl?'filled':''} ${i<lvl&&isMax?'maxed':''}"></div>`;
+
+            grid.innerHTML += `
+                <div class="upgrade-card">
+                    <div class="u-title">${m.n}</div>
+                    <div class="tier-track">${pips}</div>
+                    <div class="u-desc">${m.d}</div>
+                    <div style="font-size:10px; color:#555; margin-bottom:5px;">LVL ${lvl}/${m.max}</div>
+                    ${isMax ? `<div class="u-maxed">SYSTEM MAXED</div>` : `<div class="u-cost">${cost} CR</div>`}
+                    <button class="buy-btn" ${!canBuy?'disabled':''} onclick="SHOP.buy('${k}')">${isMax ? 'MAXED' : 'INSTALL'}</button>
+                </div>
+            `;
+        }
+    };
+
+    const buy = id => {
+        let cost = getCost(id);
+        if(cost > -1 && DATA.get().cr >= cost) {
+            DATA.get().cr -= cost;
+            DATA.get().upg[id]++;
+            DATA.save();
+            AUDIO.buy();
+            render();
+        }
+    };
+
+    return { get: getUpg, render, buy };
+})();
+
+/**
+ * UI & INPUT HANDLING
+ */
+const UI = (() => {
+    const showScreen = id => {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen'));
+        if(id) document.getElementById(id).classList.add('active-screen');
+        if(id !== 'hud-container') AUDIO.click();
+    };
+
+    const INP = { up: false, left: false, right: false };
+    const K = { ArrowUp:'up', KeyW:'up', Space:'up', ArrowLeft:'left', KeyA:'left', ArrowRight:'right', KeyD:'right' };
+    
+    window.addEventListener('keydown', e => { if(K[e.code]) INP[K[e.code]] = true; if(e.code==='Escape' && GAME.active) GAME.togglePause(); AUDIO.init(); });
+    window.addEventListener('keyup', e => { if(K[e.code]) INP[K[e.code]] = false; });
+
+    const bt = (id, k) => {
+        let el = document.getElementById(id); if(!el) return;
+        el.addEventListener('touchstart', e=>{e.preventDefault(); INP[k]=true; AUDIO.init();});
+        el.addEventListener('touchend', e=>{e.preventDefault(); INP[k]=false;});
+    };
+    bt('btn-up', 'up'); bt('btn-thrust', 'up'); bt('btn-left', 'left'); bt('btn-right', 'right');
+
+    return { showScreen, INP };
+})();
+
+const STATS = {
+    render: () => {
+        let d = DATA.get();
+        let wr = d.stat.fl > 0 ? Math.floor((d.stat.sc / d.stat.fl)*100) : 0;
+        document.getElementById('stats-content').innerHTML = `
+            <div>TOTAL SORTIES: <span style="float:right; color:#fff;">${d.stat.fl}</span></div>
+            <div>SUCCESSFUL DROPS: <span style="float:right; color:#fff;">${d.stat.sc}</span></div>
+            <div>HULL LOSSES: <span style="float:right; color:var(--crit-color);">${d.stat.crsh}</span></div>
+            <div>SUCCESS RATE: <span style="float:right; color:${wr>50?'var(--hud-color)':'var(--warn-color)'};">${wr}%</span></div>
+            <div style="border-top: 1px solid #333; margin-top:10px; padding-top:10px;">LIFETIME EARNINGS: <span style="float:right; color:var(--warn-color);">${d.stat.totCr} CR</span></div>
+            <div>HIGHEST SECTOR: <span style="float:right; color:#fff;">${d.sec}</span></div>
+        `;
+    }
+};
+
+/**
+ * GRAPHICS ENGINE (Canvas 2D Vector Style)
+ */
+const GFX = (() => {
+    const cvs = document.getElementById('cvs');
+    const ctx = cvs.getContext('2d', { alpha: false });
+    let W, H;
+
+    const res = () => { W = cvs.width = window.innerWidth; H = cvs.height = window.innerHeight; };
+    window.addEventListener('resize', res); res();
+
+    const clear = () => { ctx.fillStyle = '#020202'; ctx.fillRect(0,0,W,H); };
+
+    const begin = (cam, zoom) => {
+        ctx.save();
+        // Center screen
+        ctx.translate(W/2, H/2);
+        ctx.scale(zoom, zoom);
+        // Apply camera offset
+        ctx.translate(-cam.x, -cam.y);
+        
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.lineWidth = CFG.VEC_W / zoom; // Maintain apparent thickness
+    };
+    const end = () => ctx.restore();
+
+    const poly = (pts, col, closed=true, glow=true) => {
+        if(pts.length<2) return;
+        ctx.strokeStyle = col;
+        ctx.shadowBlur = glow ? CFG.GLOW : 0;
+        ctx.shadowColor = col;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for(let i=1; i<pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        if(closed) ctx.closePath();
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+    };
+
+    const line = (p1, p2, col, w=1, glow=true) => {
+        ctx.strokeStyle = col;
+        ctx.lineWidth = w;
+        ctx.shadowBlur = glow ? CFG.GLOW : 0;
+        ctx.shadowColor = col;
+        ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+        ctx.shadowBlur = 0;
+    };
+
+    return { cvs, ctx, getW:()=>W, getH:()=>H, clear, begin, end, poly, line };
+})();
+
+/**
+ * PROCEDURAL TERRAIN (Smooth curves + flat pads)
+ */
+class Terrain {
+    constructor(sec) {
+        this.pts = [];
+        this.pads = [];
+        this.w = 5000 + (sec * 1000); // Wider each sector
+        this.gen(sec);
+    }
+
+    gen(sec) {
+        let steps = Math.floor(this.w / 40); // Resolution
+        let heights = new Array(steps+1);
+        
+        // 1. Generate base smooth noise (Sum of Sines)
+        let seed1 = sec*13.1, seed2 = sec*7.3, seed3 = sec*2.9;
+        for(let i=0; i<=steps; i++) {
+            let px = (i/steps) * this.w;
+            let n1 = Math.sin(px * 0.002 + seed1) * 400;
+            let n2 = Math.sin(px * 0.005 + seed2) * 200;
+            let n3 = Math.sin(px * 0.01 + seed3) * 50;
+            
+            // Base altitude gets deeper as level progresses to force canyon flying
+            let baseAlt = 1000 + (sec * 50); 
+            heights[i] = baseAlt + n1 + n2 + n3;
+            if(heights[i] < 300) heights[i] = 300; // Sky ceiling limit
+        }
+
+        // 2. Inject flat landing pads
+        let numPads = 3 + Math.floor(sec/2);
+        let padW_units = Math.max(2, 6 - Math.floor(sec/3)); // Pads get narrower
+        
+        for(let p=0; p<numPads; p++) {
+            let idx = MathU.randInt(10, steps - 10 - padW_units);
+            
+            // Ensure pads aren't stacked
+            let valid = true;
+            for(let op of this.pads) { if(Math.abs(op.idx - idx) < 15) valid = false; }
+            if(!valid) { p--; continue; }
+            
+            let py = heights[idx];
+            for(let j=0; j<padW_units; j++) heights[idx+j] = py; // Flatten array
+            
+            let isMain = p === 0;
+            let mult = isMain ? 1 : (Math.random()>0.5 ? 2 : 5);
+            if(padW_units <= 3 && !isMain) mult *= 2; // Bonus for tiny pads
+            
+            this.pads.push({ 
+                idx: idx, 
+                x: (idx/steps)*this.w, 
+                w: (padW_units/steps)*this.w, 
+                y: py, 
+                main: isMain, 
+                mult: mult 
+            });
+        }
+
+        // 3. Build actual Vec2 points
+        for(let i=0; i<=steps; i++) {
+            this.pts.push(new Vec2((i/steps)*this.w, heights[i]));
+        }
+    }
+
+    draw(ren) {
+        // Draw terrain line
+        ren.poly(this.pts, 'var(--vec-color)', false);
+        
+        // Draw Pads
+        for(let p of this.pads) {
+            let col = p.main ? 'var(--hud-color)' : (p.mult > 2 ? 'var(--warn-color)' : '#fff');
+            
+            // Pad Surface
+            ren.line(new Vec2(p.x, p.y), new Vec2(p.x+p.w, p.y), col, CFG.VEC_W*2);
+            
+            // Base pillars (decorative)
+            ren.line(new Vec2(p.x+10, p.y), new Vec2(p.x+5, p.y+100), '#444', 1, false);
+            ren.line(new Vec2(p.x+p.w-10, p.y), new Vec2(p.x+p.w-5, p.y+100), '#444', 1, false);
+            
+            // Multiplier Text (Simulated via simple geometry since no HTML text in canvas space)
+            // Just drawing a box to indicate a high value pad
+            if(!p.main) {
+                let bw = 20, bh = 10;
+                let bx = p.x + p.w/2 - bw/2, by = p.y + 10;
+                ren.poly([new Vec2(bx,by), new Vec2(bx+bw,by), new Vec2(bx+bw,by+bh), new Vec2(bx,by+bh)], col, true, false);
+            }
+        }
+    }
+
+    collide(p1, p2) {
+        // Line intersection against all terrain segments
+        for(let i=0; i<this.pts.length-1; i++) {
+            let t1 = this.pts[i], t2 = this.pts[i+1];
+            // Quick bounding box reject
+            if(Math.max(p1.x, p2.x) < Math.min(t1.x, t2.x) || Math.min(p1.x, p2.x) > Math.max(t1.x, t2.x)) continue;
+            
+            let den = (p1.x-p2.x)*(t1.y-t2.y) - (p1.y-p2.y)*(t1.x-t2.x);
+            if(den === 0) continue;
+            let t = ((p1.x-t1.x)*(t1.y-t2.y) - (p1.y-t1.y)*(t1.x-t2.x)) / den;
+            let u = -((p1.x-p2.x)*(p1.y-t1.y) - (p1.y-p2.y)*(p1.x-t1.x)) / den;
+            
+            if(t >= 0 && t <= 1 && u >= 0 && u <= 1) {
+                return { hit: true, pt: new Vec2(p1.x + t*(p2.x-p1.x), p1.y + t*(p2.y-p1.y)) };
+            }
+        }
+        return { hit: false };
     }
 }
 
-// ============================================================================
-// ENTITIES
-// ============================================================================
-class Particle {
-    constructor(x, y, vx, vy, life) {
-        this.pos = new Vec2(x, y);
-        this.vel = new Vec2(vx, vy);
-        this.life = life;
-        this.maxLife = life;
+/**
+ * PARTICLE SYSTEM
+ */
+class Particles {
+    constructor() { this.p = []; }
+    spawn(x, y, vx, vy, life, col, type='dot') {
+        this.p.push({ pos: new Vec2(x,y), vel: new Vec2(vx,vy), l: life, ml: life, c: col, t: type });
     }
-    update(dt) {
-        this.pos.add(new Vec2(this.vel.x*dt, this.vel.y*dt));
-        this.life -= dt;
+    upd(dt) {
+        for(let i=this.p.length-1; i>=0; i--) {
+            let pt = this.p[i];
+            pt.vel.y += CFG.GRAVITY * 0.5 * dt; // Particles have less grav
+            pt.pos.add(new Vec2(pt.vel.x*dt, pt.vel.y*dt));
+            pt.l -= dt;
+            if(pt.l <= 0) this.p.splice(i,1);
+        }
+    }
+    draw(ren) {
+        for(let pt of this.p) {
+            ren.ctx.globalAlpha = Math.max(0, pt.l/pt.ml);
+            if(pt.t === 'dot') {
+                ren.ctx.fillStyle = pt.c;
+                ren.ctx.fillRect(pt.pos.x-1, pt.pos.y-1, 2, 2);
+            } else if (pt.t === 'line') {
+                ren.line(pt.pos, new Vec2(pt.pos.x-pt.vel.x*2, pt.pos.y-pt.vel.y*2), pt.c, 1, false);
+            }
+        }
+        ren.ctx.globalAlpha = 1;
     }
 }
 
+/**
+ * VESSEL ENTITY
+ */
 class Ship {
     constructor() {
-        this.pos = new Vec2(100, 100);
-        this.vel = new Vec2(1.5, 0);
-        this.angle = Math.PI / 2; // Pointing right initially
-        this.fuel = 1000;
-        this.status = 'FLYING'; // FLYING, LANDED, CRASHED
+        this.reset();
+        this.w = 20; this.h = 30;
         
-        // Define ship vector geometry (local space)
-        this.pts = [
-            new Vec2(0, -6),   // Nose
-            new Vec2(4, 4),    // Right wing
-            new Vec2(3, 6),    // Right foot
-            new Vec2(2, 4),    // Right engine inner
-            new Vec2(-2, 4),   // Left engine inner
-            new Vec2(-3, 6),   // Left foot
-            new Vec2(-4, 4)    // Left wing
-        ];
-        
-        this.flamePts = [
-            new Vec2(-2, 4),
-            new Vec2(0, 10),
-            new Vec2(2, 4)
-        ];
-        
-        this.worldPts = [];
-        this.updateWorldPts();
-    }
-    
-    reset(x, y) {
-        this.pos.set(x, y);
-        this.vel.set(1.5, 0);
-        this.angle = Math.PI / 2;
-        this.fuel = 1000;
-        this.status = 'FLYING';
-        this.updateWorldPts();
+        // Base Geometry (Local Space)
+        this.geo = {
+            body: [new Vec2(0,-15), new Vec2(10,5), new Vec2(-10,5)],
+            legL: [new Vec2(-8,5), new Vec2(-12,15)],
+            legR: [new Vec2(8,5), new Vec2(12,15)],
+            footL: [new Vec2(-16,15), new Vec2(-8,15)],
+            footR: [new Vec2(8,15), new Vec2(16,15)]
+        };
     }
 
-    update(dt) {
-        if(this.status !== 'FLYING') return;
-
-        // Input application
-        if(input.mapped.left && this.fuel > 0) {
-            this.angle -= CONFIG.ROTATION_SPEED;
-            this.fuel -= CONFIG.FUEL_CONSUMPTION * 0.1;
-        }
-        if(input.mapped.right && this.fuel > 0) {
-            this.angle += CONFIG.ROTATION_SPEED;
-            this.fuel -= CONFIG.FUEL_CONSUMPTION * 0.1;
-        }
+    reset() {
+        this.p = new Vec2(100, 100);
+        this.v = new Vec2(2, 0); // Initial toss
+        this.a = Math.PI/2; // Start facing right
+        this.va = 0;
+        this.dead = false;
+        this.landed = false;
         
-        let isThrusting = false;
-        if(input.mapped.up && this.fuel > 0) {
-            let thrustVec = new Vec2(0, -CONFIG.THRUST_POWER).rotate(this.angle);
-            this.vel.add(thrustVec);
-            this.fuel -= CONFIG.FUEL_CONSUMPTION;
-            isThrusting = true;
+        // Load upgraded stats
+        this.thrustMag = CFG.BASE_THRUST * SHOP.get('eng');
+        this.rcsMag = CFG.BASE_RCS * SHOP.get('rcs');
+        this.fMax = SHOP.get('tank');
+        this.f = this.fMax;
+        this.eff = SHOP.get('eff');
+        this.hpMax = SHOP.get('hull');
+        this.hp = this.hpMax;
+        this.safeV = CFG.MAX_SAFE_V * SHOP.get('gear');
+        
+        this.isBurn = false;
+    }
+
+    upd(dt, env, pts) {
+        if(this.dead || this.landed) { if(this.isBurn){ AUDIO.tOff(); this.isBurn=false;} return; }
+
+        let burnThisFrame = false;
+
+        // --- INPUT ---
+        if(UI.INP.up && this.f > 0) {
+            let dir = new Vec2(0, -this.thrustMag).rot(this.a);
+            this.v.add(new Vec2(dir.x*dt, dir.y*dt));
+            this.f -= 0.5 * this.eff * dt;
+            burnThisFrame = true;
             
-            // Particles
-            let ex = this.pos.x - Math.sin(this.angle)*4;
-            let ey = this.pos.y + Math.cos(this.angle)*4;
-            for(let i=0; i<2; i++) {
-                game.particles.push(new Particle(
-                    ex + MathUtils.rand(-1,1), 
-                    ey + MathUtils.rand(-1,1), 
-                    -this.vel.x + MathUtils.rand(-0.5,0.5), 
-                    -this.vel.y + MathUtils.rand(0.5,1.5), 
-                    MathUtils.rand(10, 30)
-                ));
-            }
-        }
-        
-        // Engine audio
-        if(isThrusting) audio.startThrust();
-        else audio.stopThrust();
-
-        // Gravity
-        this.vel.y += CONFIG.GRAVITY;
-
-        // Velocity integration
-        this.pos.addScaled(this.vel, dt);
-        
-        // Wrap screen horizontally
-        if(this.pos.x < 0) this.pos.x += CONFIG.VIEWPORT_WIDTH;
-        if(this.pos.x > CONFIG.VIEWPORT_WIDTH) this.pos.x -= CONFIG.VIEWPORT_WIDTH;
-        
-        // Hard ceiling
-        if(this.pos.y < 0) {
-            this.pos.y = 0;
-            this.vel.y = 0;
+            // Thrust visuals
+            let ex = this.p.x - Math.sin(this.a)*10;
+            let ey = this.p.y + Math.cos(this.a)*10;
+            pts.spawn(ex, ey, -this.v.x + MathU.rand(-0.5,0.5), -this.v.y + MathU.rand(1,3), MathU.rand(10,20), '#ffaa00');
+            pts.spawn(ex, ey, -this.v.x + MathU.rand(-0.2,0.2), -this.v.y + MathU.rand(2,4), MathU.rand(5,15), '#ffffff');
         }
 
-        this.updateWorldPts();
-    }
-    
-    updateWorldPts() {
-        this.worldPts = this.pts.map(p => {
-            let wp = p.copy().rotate(this.angle);
-            return wp.add(this.pos);
-        });
-    }
+        if(burnThisFrame && !this.isBurn) { AUDIO.tOn(SHOP.get('eng')/2); this.isBurn = true; }
+        else if(!burnThisFrame && this.isBurn) { AUDIO.tOff(); this.isBurn = false; }
 
-    draw(ren) {
-        if(this.status === 'CRASHED') return;
-        
-        ren.drawPoly(this.worldPts, true);
-        
-        // Draw thrust flame
-        if(this.status === 'FLYING' && input.mapped.up && this.fuel > 0) {
-            let flameW = this.flamePts.map(p => {
-                let p2 = p.copy();
-                if(p2.y > 4) p2.y = 4 + Math.random()*8; // flicker
-                return p2.rotate(this.angle).add(this.pos);
-            });
-            ren.drawPoly(flameW, false);
+        if(UI.INP.left && this.f > 0) { 
+            this.va -= this.rcsMag * dt; this.f -= 0.1 * this.eff * dt; AUDIO.rcs(); 
+            let rx = this.p.x + Math.cos(this.a)*10, ry = this.p.y + Math.sin(this.a)*10;
+            pts.spawn(rx, ry, Math.cos(this.a)*2, Math.sin(this.a)*2, 10, '#fff', 'line');
         }
-    }
-}
+        if(UI.INP.right && this.f > 0) { 
+            this.va += this.rcsMag * dt; this.f -= 0.1 * this.eff * dt; AUDIO.rcs(); 
+            let rx = this.p.x - Math.cos(this.a)*10, ry = this.p.y - Math.sin(this.a)*10;
+            pts.spawn(rx, ry, -Math.cos(this.a)*2, -Math.sin(this.a)*2, 10, '#fff', 'line');
+        }
 
-class Terrain {
-    constructor() {
-        this.segments = [];
-        this.generate();
-    }
-    
-    generate() {
-        this.segments = [];
-        let points = [];
-        const W = CONFIG.VIEWPORT_WIDTH;
-        const H = CONFIG.VIEWPORT_HEIGHT;
+        // --- PHYSICS ---
+        this.v.y += CFG.GRAVITY * dt;
+        this.p.add(new Vec2(this.v.x*dt, this.v.y*dt));
         
-        // Base profile setup
-        points.push(new Vec2(0, H - 200));
+        this.a += this.va * dt;
+        this.va *= Math.pow(CFG.ROT_FRICTION, dt);
+
+        // Bounds wrap
+        if(this.p.x < 0) this.p.x += env.w;
+        if(this.p.x > env.w) this.p.x -= env.w;
+        if(this.p.y < -500) { this.p.y = -500; this.v.y = 0; } // Ceiling
+
+        // --- COLLISION ---
+        // Transform ship bottom points to world space
+        let c = Math.cos(this.a), s = Math.sin(this.a);
+        let tx = (x,y) => this.p.x + (x*c - y*s);
+        let ty = (x,y) => this.p.y + (x*s + y*c);
         
-        let curX = 0;
-        let pCount = 0;
-        
-        // Hardcoded flat pads layout mixed with noise
-        let padTargets = [
-            { x: W*0.15, w: 40, mult: 2 },
-            { x: W*0.5, w: 20, mult: 5 },
-            { x: W*0.8, w: 60, mult: 1 }
-        ];
-        
-        while(curX < W) {
-            // Check if we need to draw a pad
-            let makingPad = false;
-            for(let i=0; i<padTargets.length; i++) {
-                let t = padTargets[i];
-                if(curX >= t.x && curX < t.x + t.w) {
-                    let padY = points[points.length-1].y;
-                    let padEndX = t.x + t.w;
-                    points.push(new Vec2(padEndX, padY));
-                    this.segments.push(new Segment(curX, padY, padEndX, padY, true, t.mult));
-                    curX = padEndX;
-                    makingPad = true;
-                    padTargets.splice(i, 1);
-                    break;
-                }
-            }
+        // Define bottom collision segment (Foot L left edge to Foot R right edge)
+        let botL = new Vec2(tx(-16, 15), ty(-16, 15));
+        let botR = new Vec2(tx(16, 15), ty(16, 15));
+        let topN = new Vec2(tx(0, -15), ty(0, -15));
+
+        let hitB = env.collide(botL, botR);
+        let hitT = env.collide(this.p, topN); // Nose bump
+
+        if(hitB.hit || hitT.hit) {
+            let pt = hitB.hit ? hitB.pt : hitT.pt;
+            let speed = this.v.mag();
             
-            if(!makingPad) {
-                // Procedural jagged terrain
-                let stepX = MathUtils.rand(10, 30);
-                if(curX + stepX > W) stepX = W - curX;
-                
-                let lastY = points[points.length-1].y;
-                let stepY = MathUtils.rand(-60, 60);
-                
-                // Force peaks and valleys
-                if(lastY < H - 400) stepY = Math.abs(stepY); // Too high, go down
-                if(lastY > H - 50) stepY = -Math.abs(stepY); // Too low, go up
-                
-                // Stepped/Quantized look (Classic Arcade)
-                let nextX = curX + stepX;
-                let nextY = lastY + stepY;
-                
-                // We do orthogonal steps instead of diagonals to match the reference image exactly
-                let midX = curX;
-                let midY = nextY;
-                
-                if(Math.random() > 0.5) {
-                    midX = nextX;
-                    midY = lastY;
+            // Check Pad Landing
+            let onPad = null;
+            for(let pad of env.pads) {
+                // Must be inside X bounds, near Y bounds, and upright
+                if(this.p.x > pad.x && this.p.x < pad.x+pad.w && Math.abs(pt.y - pad.y) < 10 && Math.abs(this.a) < CFG.MAX_SAFE_ANG) {
+                    onPad = pad; break;
                 }
-                
-                // Create the two segments for the step
-                points.push(new Vec2(midX, midY));
-                this.segments.push(new Segment(curX, lastY, midX, midY, false));
-                
-                points.push(new Vec2(nextX, nextY));
-                this.segments.push(new Segment(midX, midY, nextX, nextY, false));
-                
-                curX = nextX;
             }
-        }
-    }
-    
-    draw(ren) {
-        for(let s of this.segments) {
-            if(s.isPad) {
-                // Thicker/brighter line for pads, or blinking
-                if(Math.floor(Date.now() / 250) % 2 === 0) {
-                    ren.ctx.lineWidth = CONFIG.VECTOR_THICKNESS * 2;
-                }
-                ren.drawLine(s.p1.x, s.p1.y, s.p2.x, s.p2.y);
-                ren.ctx.lineWidth = CONFIG.VECTOR_THICKNESS;
-                
-                // Draw multiplier text under pad
-                ren.drawText(s.multiplier + "X", s.p1.x + (s.p2.x-s.p1.x)/2, s.p1.y + 10, 0.8, 'center');
+
+            if(onPad && speed <= this.safeV && !hitT.hit) {
+                // LANDED
+                this.landed = true;
+                this.v.set(0,0); this.va = 0; this.a = 0;
+                this.p.y = onPad.y - 15; // Set precisely on pad
+                AUDIO.land();
+                for(let i=0; i<20; i++) pts.spawn(this.p.x, this.p.y+15, MathU.rand(-2,2), MathU.rand(-1,0), 30, '#888');
+                setTimeout(() => GAME.triggerWin(onPad), 1500);
             } else {
-                ren.drawLine(s.p1.x, s.p1.y, s.p2.x, s.p2.y);
-            }
-        }
-    }
-}
-
-// ============================================================================
-// GAME MANAGER
-// ============================================================================
-const STATE = {
-    ATTRACT: 0,
-    PLAYING: 1,
-    LANDED: 2,
-    CRASHED: 3,
-    GAME_OVER: 4
-};
-
-class Game {
-    constructor() {
-        this.state = STATE.ATTRACT;
-        this.ship = new Ship();
-        this.terrain = new Terrain();
-        this.particles = [];
-        this.stars = [];
-        
-        this.score = 0;
-        this.time = 0;
-        this.lastTime = 0;
-        this.stateTimer = 0;
-        
-        this.initStars();
-    }
-    
-    initStars() {
-        this.stars = [];
-        for(let i=0; i<30; i++) {
-            this.stars.push(new Vec2(
-                MathUtils.rand(0, CONFIG.VIEWPORT_WIDTH),
-                MathUtils.rand(0, CONFIG.VIEWPORT_HEIGHT/2)
-            ));
-        }
-    }
-
-    start() {
-        this.score = 0;
-        this.time = 0;
-        this.startLevel();
-    }
-    
-    startLevel() {
-        this.terrain.generate();
-        this.ship.reset(100, 100);
-        this.particles = [];
-        this.state = STATE.PLAYING;
-    }
-
-    update(dt) {
-        // Star twinkling
-        if(Math.random() < 0.1) this.stars[MathUtils.randInt(0, this.stars.length-1)].opacity = Math.random();
-
-        // Particles
-        for(let i=this.particles.length-1; i>=0; i--) {
-            this.particles[i].update(dt);
-            if(this.particles[i].life <= 0) this.particles.splice(i, 1);
-        }
-
-        if(this.state === STATE.ATTRACT) {
-            // Fake AI / Demo mode
-            if(Math.random()<0.02) input.mapped.up = !input.mapped.up;
-            if(Math.random()<0.05) { input.mapped.left = true; input.mapped.right = false; }
-            else if(Math.random()<0.05) { input.mapped.right = true; input.mapped.left = false; }
-            else { input.mapped.left = false; input.mapped.right = false; }
-            
-            this.ship.update(dt);
-            this.checkCollisions();
-            
-            if(this.ship.status !== 'FLYING') {
-                setTimeout(() => { this.ship.reset(100,100); }, 2000);
-            }
-            
-            if(input.mapped.start) this.start();
-            return;
-        }
-
-        if(this.state === STATE.PLAYING) {
-            this.time += dt / 60; // Approximate seconds
-            this.ship.update(dt);
-            this.checkCollisions();
-            
-            if(this.ship.fuel <= 0 && this.ship.vel.y > 0) {
-                // Out of fuel, just falling
-            }
-        }
-        
-        if(this.state === STATE.CRASHED || this.state === STATE.LANDED) {
-            this.stateTimer -= dt;
-            if(this.stateTimer <= 0) {
-                if(this.ship.fuel <= 0 && this.state === STATE.CRASHED) {
-                    this.state = STATE.GAME_OVER;
+                // CRASH
+                let dmg = speed * 40;
+                if(hitT.hit) dmg *= 2; // Nose dives hurt more
+                this.hp -= dmg;
+                
+                if(this.hp <= 0) {
+                    this.explode(pts);
                 } else {
-                    this.startLevel();
+                    // Bounce
+                    AUDIO.crash(speed/2);
+                    this.v.mult(-0.4);
+                    this.va += MathU.rand(-0.1, 0.1);
+                    this.p.y -= 2;
+                    for(let i=0; i<10; i++) pts.spawn(pt.x, pt.y, MathU.rand(-2,2), MathU.rand(-2,0), 20, '#fff');
                 }
             }
         }
-        
-        if(this.state === STATE.GAME_OVER) {
-            if(input.mapped.start) {
-                this.state = STATE.ATTRACT;
-            }
-        }
     }
 
-    checkCollisions() {
-        if(this.ship.status !== 'FLYING') return;
-
-        let crashed = false;
-        let landedOn = null;
+    explode(pts) {
+        this.dead = true; this.hp = 0;
+        AUDIO.tOff(); AUDIO.crash(2.0);
         
-        // Define bottom segment of ship for pad detection
-        let shipBottom = [this.ship.worldPts[2], this.ship.worldPts[5]];
-
-        // Broad phase: Check all ship lines against all terrain lines
-        for(let i=0; i<this.ship.worldPts.length; i++) {
-            let p1 = this.ship.worldPts[i];
-            let p2 = this.ship.worldPts[(i+1)%this.ship.worldPts.length];
-            
-            for(let seg of this.terrain.segments) {
-                let hit = seg.intersect(p1, p2);
-                if(hit) {
-                    // We hit something. Evaluate.
-                    let speed = this.ship.vel.mag();
-                    let isUpright = Math.abs(this.ship.angle % (Math.PI*2)) < CONFIG.MAX_SAFE_LANDING_ANGLE;
-                    
-                    // Specific check: Did the feet hit a pad?
-                    let feetHit = false;
-                    if(seg.isPad) {
-                         let hitLeft = seg.intersect(this.ship.worldPts[4], this.ship.worldPts[5]); // left leg
-                         let hitRight = seg.intersect(this.ship.worldPts[2], this.ship.worldPts[3]); // right leg
-                         if(hitLeft || hitRight) feetHit = true;
-                    }
-
-                    if(seg.isPad && isUpright && speed <= CONFIG.MAX_SAFE_LANDING_SPEED && feetHit) {
-                        landedOn = seg;
-                    } else {
-                        crashed = true;
-                    }
-                    break;
-                }
-            }
-            if(crashed || landedOn) break;
+        for(let i=0; i<100; i++) {
+            pts.spawn(this.p.x, this.p.y, MathU.rand(-5,5), MathU.rand(-5,5), MathU.rand(20,60), '#ff3333');
+            pts.spawn(this.p.x, this.p.y, MathU.rand(-3,3), MathU.rand(-3,3), MathU.rand(30,80), '#ffaa00');
+            pts.spawn(this.p.x, this.p.y, MathU.rand(-8,8), MathU.rand(-8,8), MathU.rand(10,30), '#ffffff', 'line');
         }
-
-        if(crashed) {
-            this.triggerCrash();
-        } else if(landedOn) {
-            this.triggerLand(landedOn);
-        }
-    }
-
-    triggerCrash() {
-        this.ship.status = 'CRASHED';
-        this.state = STATE.CRASHED;
-        this.stateTimer = 180; // 3 seconds at 60fps
-        audio.stopThrust();
-        audio.sfxCrash();
         
-        // Explosion particles
-        for(let i=0; i<40; i++) {
-            this.particles.push(new Particle(
-                this.ship.pos.x, this.ship.pos.y,
-                MathUtils.rand(-3, 3), MathUtils.rand(-3, 3),
-                MathUtils.rand(20, 80)
-            ));
-        }
-        // Debris
-        for(let i=0; i<6; i++) {
-            this.particles.push(new Particle(
-                this.ship.pos.x, this.ship.pos.y,
-                MathUtils.rand(-1, 1), MathUtils.rand(-2, 0),
-                MathUtils.rand(60, 120)
-            ));
-        }
-    }
-
-    triggerLand(pad) {
-        this.ship.status = 'LANDED';
-        this.state = STATE.LANDED;
-        this.stateTimer = 180;
-        
-        // Snap to pad
-        this.ship.vel.set(0,0);
-        this.ship.angle = 0;
-        this.ship.updateWorldPts();
-        
-        audio.stopThrust();
-        audio.sfxLand();
-        
-        // Calculate score
-        let points = 50 * pad.multiplier;
-        if(this.ship.vel.y < 0.5) points += 50; // soft landing bonus
-        
-        this.score += points;
-        
-        // Award fuel
-        this.ship.fuel = Math.min(1000, this.ship.fuel + 200);
-        
-        setTimeout(() => audio.sfxScore(), 500);
+        DATA.get().stat.crsh++; DATA.save();
+        setTimeout(() => GAME.triggerFail(), 2000);
     }
 
     draw(ren) {
-        ren.clear();
-        ren.begin();
-
-        // Stars
-        for(let s of this.stars) {
-            if(s.opacity === undefined) s.opacity = 1;
-            if(Math.random() > 0.5) ren.drawDot(s.x, s.y);
+        if(this.dead) return;
+        
+        let c = Math.cos(this.a), s = Math.sin(this.a);
+        let trans = (arr) => arr.map(v => new Vec2(this.p.x + (v.x*c - v.y*s), this.p.y + (v.x*s + v.y*c)));
+        
+        let col = this.hp < this.hpMax*0.3 ? (Date.now()%200<100 ? 'var(--crit-color)' : 'var(--vec-color)') : 'var(--vec-color)';
+        
+        ren.poly(trans(this.geo.body), col);
+        ren.line(trans([this.geo.legL[0]])[0], trans([this.geo.legL[1]])[0], col);
+        ren.line(trans([this.geo.legR[0]])[0], trans([this.geo.legR[1]])[0], col);
+        ren.line(trans([this.geo.footL[0]])[0], trans([this.geo.footL[1]])[0], col);
+        ren.line(trans([this.geo.footR[0]])[0], trans([this.geo.footR[1]])[0], col);
+        
+        // Thrust flame
+        if(UI.INP.up && this.f > 0) {
+            let fLen = 15 + Math.random()*15;
+            let fPoly = trans([new Vec2(-4,5), new Vec2(4,5), new Vec2(0, 5+fLen)]);
+            ren.poly(fPoly, 'var(--warn-color)', true, true);
         }
-
-        this.terrain.draw(ren);
-        this.ship.draw(ren);
-
-        // Particles
-        for(let p of this.particles) {
-            ren.drawDot(p.pos.x, p.pos.y);
-        }
-
-        // --- HUD RENDERING ---
-        
-        // Top Left
-        ren.drawText("SCORE " + MathUtils.padZero(this.score, 4), 20, 20, 1.5);
-        
-        let m = Math.floor(this.time / 60);
-        let s = Math.floor(this.time % 60);
-        ren.drawText("TIME  " + m + ":" + MathUtils.padZero(s, 2), 20, 45, 1.5);
-        
-        ren.drawText("FUEL  " + MathUtils.padZero(Math.floor(this.ship.fuel), 4), 20, 70, 1.5);
-
-        // Top Right
-        let alt = Math.max(0, CONFIG.VIEWPORT_HEIGHT - this.ship.pos.y - 150); // Rough altitude
-        ren.drawText("ALTITUDE", CONFIG.VIEWPORT_WIDTH - 250, 20, 1.5);
-        ren.drawText(MathUtils.padZero(Math.floor(alt), 4), CONFIG.VIEWPORT_WIDTH - 20, 20, 1.5, 'right');
-        
-        ren.drawText("HORIZONTAL SPEED", CONFIG.VIEWPORT_WIDTH - 250, 45, 1.5);
-        ren.drawText(MathUtils.padZero(Math.floor(Math.abs(this.ship.vel.x * 100)), 4), CONFIG.VIEWPORT_WIDTH - 20, 45, 1.5, 'right');
-        
-        ren.drawText("VERTICAL SPEED", CONFIG.VIEWPORT_WIDTH - 250, 70, 1.5);
-        ren.drawText(MathUtils.padZero(Math.floor(Math.abs(this.ship.vel.y * 100)), 4), CONFIG.VIEWPORT_WIDTH - 20, 70, 1.5, 'right');
-
-        // State Overlays
-        if(this.state === STATE.ATTRACT) {
-            ren.drawText("PUSH START", CONFIG.VIEWPORT_WIDTH/2, 200, 2.5, 'center');
-            ren.drawText("INSERT COIN", CONFIG.VIEWPORT_WIDTH/2, 250, 1.5, 'center');
-        } else if (this.state === STATE.CRASHED) {
-            ren.drawText("CONTACT IS LOST", CONFIG.VIEWPORT_WIDTH/2, 200, 2.5, 'center');
-        } else if (this.state === STATE.LANDED) {
-            ren.drawText("A PERFECT LANDING", CONFIG.VIEWPORT_WIDTH/2, 200, 2.5, 'center');
-        } else if (this.state === STATE.GAME_OVER) {
-            ren.drawText("GAME OVER", CONFIG.VIEWPORT_WIDTH/2, 200, 3.0, 'center');
-        }
-
-        // Bottom Footer
-        ren.drawText("PART OF THE LUNAR TRAILS ART PROJECT", 20, CONFIG.VIEWPORT_HEIGHT - 20, 1.0);
-        ren.drawText("SEB.LY", CONFIG.VIEWPORT_WIDTH - 20, CONFIG.VIEWPORT_HEIGHT - 20, 1.0, 'right');
-
-        ren.end();
     }
 }
 
-// ============================================================================
-// BOOTSTRAP & MAIN LOOP
-// ============================================================================
-const renderer = new VectorRenderer('game-canvas');
-const input = new Input();
-const audio = new AudioEngine();
-const game = new Game();
+/**
+ * GAME STATE & MAIN LOOP
+ */
+const GAME = (() => {
+    let active = false;
+    let paused = false;
+    let lastT = 0;
+    
+    let env, ship, pts;
+    let cam = new Vec2(0,0);
+    let zoom = 1.0;
+    let targetZoom = 1.0;
+    
+    let stars = [];
 
-let lastTime = 0;
-function loop(timestamp) {
-    if(!lastTime) lastTime = timestamp;
-    let delta = timestamp - lastTime;
-    
-    // Cap delta to avoid spiral of death on tab switch
-    if(delta > CONFIG.MAX_FRAME_TIME) delta = CONFIG.MAX_FRAME_TIME;
-    lastTime = timestamp;
-    
-    // Fixed timestep logic (optional for pure retro, but good for physics)
-    let steps = Math.floor(delta / (1000/CONFIG.FPS));
-    if(steps === 0) steps = 1; // force at least one update
-    
-    for(let i=0; i<steps; i++) {
-        game.update(1); // 1 unit of time per physics tick
-    }
-    
-    game.draw(renderer);
-    requestAnimationFrame(loop);
-}
+    const initGen = () => {
+        let sec = DATA.get().sec;
+        env = new Terrain(sec);
+        ship = new Ship();
+        pts = new Particles();
+        
+        stars = [];
+        for(let i=0; i<300; i++) stars.push({x: Math.random()*env.w, y: Math.random()*2000, s: Math.random()*2+0.5, a: Math.random()});
+        
+        cam.set(ship.p.x, ship.p.y);
+        zoom = 1.0;
+    };
 
-// Start
-requestAnimationFrame(loop);
+    const startMission = () => {
+        DATA.get().stat.fl++; DATA.save();
+        initGen();
+        UI.showScreen('hud-container'); // HUD overlay
+        active = true; paused = false;
+        lastT = performance.now();
+        requestAnimationFrame(loop);
+        AUDIO.init();
+    };
+
+    const triggerFail = () => {
+        active = false;
+        
+        let pen = Math.floor(DATA.get().cr * 0.1);
+        if(pen > 0) {
+            DATA.get().cr -= pen; DATA.save();
+            document.getElementById('fail-penalty').innerText = `-${pen} CR`;
+        } else {
+            document.getElementById('fail-penalty').innerText = `0 CR`;
+        }
+        
+        UI.showScreen('fail-screen');
+    };
+
+    const triggerWin = (pad) => {
+        active = false;
+        DATA.get().stat.sc++;
+        
+        let sec = DATA.get().sec;
+        let base = pad.main ? (500 + sec*100) : (200 + sec*50);
+        
+        let mBase = Math.floor(base * pad.mult);
+        let hullB = Math.floor((ship.hp / ship.hpMax) * 300);
+        let fuelB = Math.floor((ship.f / ship.fMax) * 300);
+        
+        let tot = mBase + hullB + fuelB;
+        
+        DATA.get().cr += tot;
+        DATA.get().stat.totCr += tot;
+        DATA.save();
+        
+        AUDIO.win();
+        
+        document.getElementById('win-sub').innerText = pad.main ? "MAIN DZ REACHED" : `AUX LZ [x${pad.mult}] REACHED`;
+        document.getElementById('win-base').innerText = `${base} CR`;
+        document.getElementById('win-mult').innerText = `x${pad.mult}`;
+        document.getElementById('win-hull').innerText = `${hullB} CR`;
+        document.getElementById('win-fuel').innerText = `${fuelB} CR`;
+        document.getElementById('win-total').innerText = `${tot} CR`;
+        
+        setTimeout(() => UI.showScreen('win-screen'), 1000);
+    };
+
+    const advanceSector = () => {
+        DATA.get().sec++; DATA.save();
+        startMission();
+    };
+
+    const togglePause = () => {
+        if(!active && !paused) return;
+        paused = !paused;
+        if(paused) {
+            active = false; AUDIO.tOff(); UI.showScreen('pause-screen');
+        } else {
+            UI.showScreen('hud-container'); active = true; lastT = performance.now(); requestAnimationFrame(loop);
+        }
+    };
+
+    const abortMission = () => {
+        active = false; paused = false;
+        AUDIO.tOff(); UI.showScreen('menu-screen');
+    };
+
+    const updateHUD = () => {
+        // Find ground directly below
+        let gY = env.pts[0].y;
+        for(let i=0; i<env.pts.length-1; i++) {
+            if(ship.p.x >= env.pts[i].x && ship.p.x <= env.pts[i+1].x) {
+                let t = (ship.p.x - env.pts[i].x) / (env.pts[i+1].x - env.pts[i].x);
+                gY = MathU.lerp(env.pts[i].y, env.pts[i+1].y, t); break;
+            }
+        }
+        let alt = Math.max(0, gY - ship.p.y - 15);
+        
+        document.getElementById('h-alt').innerText = MathU.pad(Math.floor(alt), 4);
+        document.getElementById('h-vx').innerText = MathU.pad(Math.floor(Math.abs(ship.v.x*100)), 3);
+        document.getElementById('h-vy').innerText = MathU.pad(Math.floor(Math.abs(ship.v.y*100)), 3);
+        document.getElementById('h-ang').innerText = MathU.pad(Math.floor(Math.abs(ship.a * (180/Math.PI))%360), 3);
+        
+        document.getElementById('h-score').innerText = MathU.pad(DATA.get().stat.totCr, 5);
+        document.getElementById('h-cred').innerText = MathU.pad(DATA.get().cr, 5);
+        document.getElementById('h-sec').innerText = MathU.pad(DATA.get().sec, 2);
+        
+        let fPct = Math.max(0, (ship.f/ship.fMax)*100);
+        let hPct = Math.max(0, (ship.hp/ship.hpMax)*100);
+        document.getElementById('g-fuel').style.width = fPct + '%';
+        document.getElementById('g-hull').style.width = hPct + '%';
+        
+        let stat = document.getElementById('h-status');
+        if(hPct < 25) { stat.innerText = 'HULL CRITICAL'; stat.className = 't-alert'; if(Date.now()%1000<50) AUDIO.alert(); }
+        else if(fPct < 15) { stat.innerText = 'BINGO FUEL'; stat.className = 't-warn'; }
+        else if(ship.v.y*60 > ship.safeV*60 && alt < 200) { stat.innerText = 'PULL UP'; stat.className = 't-alert'; if(Date.now()%500<50) AUDIO.alert(); }
+        else { stat.innerText = 'SYSTEMS NOMINAL'; stat.className = ''; }
+
+        // Determine target zoom based on altitude
+        let zMax = CFG.ZOOM_MAX * SHOP.get('sens'); // Radar upgrade allows further zoom out
+        if(alt < 300) targetZoom = MathU.lerp(zMax, 1.0, alt/300); // Zoom in close to ground
+        else targetZoom = 1.0; // Normal view high up
+    };
+
+    const loop = (time) => {
+        if(!active) return;
+        
+        let dt = time - lastT;
+        if(dt > CFG.MAX_DT) dt = CFG.MAX_DT; // Clamp delta
+        lastT = time;
+        
+        // Normalize dt to 60fps frame rate for physics stability
+        let step = dt / CFG.DT;
+
+        ship.upd(step, env, pts);
+        pts.upd(step);
+
+        // Smooth camera follow
+        cam.x += (ship.p.x - cam.x) * 0.1 * step;
+        cam.y += (ship.p.y - cam.y) * 0.1 * step;
+        
+        // Wrap cam
+        if(Math.abs(ship.p.x - cam.x) > env.w/2) cam.x = ship.p.x; // Snaps if wrapped
+        
+        // Smooth Zoom
+        zoom += (targetZoom - zoom) * CFG.ZOOM_SPEED * step;
+
+        updateHUD();
+
+        // Render
+        GFX.clear();
+        GFX.begin(cam, zoom);
+
+        // Stars parallax
+        GFX.ctx.fillStyle = '#fff';
+        for(let s of stars) {
+            let sx = s.x - cam.x * 0.1;
+            let sy = s.y - cam.y * 0.1;
+            while(sx < -GFX.getW()) sx += env.w; while(sx > env.w) sx -= env.w;
+            GFX.ctx.globalAlpha = s.a; GFX.ctx.fillRect(sx, sy, s.s/zoom, s.s/zoom); // Scale star size down so they don't get huge
+        }
+        GFX.ctx.globalAlpha = 1;
+
+        env.draw(GFX);
+        pts.draw(GFX);
+        ship.draw(GFX);
+        
+        // Offscreen Markers
+        for(let p of env.pads) {
+            let px = p.x + p.w/2;
+            let screenX = (px - cam.x) * zoom;
+            let screenY = (p.y - cam.y) * zoom;
+            
+            // Check if offscreen
+            if(screenX < -GFX.getW()/2 || screenX > GFX.getW()/2 || screenY < -GFX.getH()/2 || screenY > GFX.getH()/2) {
+                let dx = px - ship.p.x;
+                let dy = p.y - ship.p.y;
+                let ang = Math.atan2(dy, dx);
+                
+                GFX.ctx.save();
+                GFX.ctx.translate(ship.p.x + Math.cos(ang)*(GFX.getW()/2.5)/zoom, ship.p.y + Math.sin(ang)*(GFX.getH()/2.5)/zoom);
+                GFX.ctx.rotate(ang);
+                let mCol = p.main ? 'var(--hud-color)' : 'var(--warn-color)';
+                GFX.poly([new Vec2(20/zoom,0), new Vec2(-10/zoom, 10/zoom), new Vec2(-5/zoom,0), new Vec2(-10/zoom,-10/zoom)], mCol, true, false);
+                GFX.ctx.restore();
+            }
+        }
+
+        GFX.end();
+        requestAnimationFrame(loop);
+    };
+
+    return { startMission, triggerFail, triggerWin, advanceSector, togglePause, abortMission, get active() { return active; } };
+})();
+
+// INIT
+window.onload = () => {
+    // Generate initial decorative background for menu
+    let bgEnv = new Terrain(1);
+    GFX.clear();
+    GFX.begin(new Vec2(bgEnv.w/2, 500), 0.5);
+    bgEnv.draw(GFX);
+    GFX.end();
+};
 
 </script>
 </body>
