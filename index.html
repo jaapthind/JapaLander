@@ -1,1076 +1,444 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>SLOPE: OVERDRIVE - PURE PHYSICS ENGINE</title>
-<style>
-/* ==========================================================================
-   CSS STYLESHEET
-   Comprehensive UI, HUD, and Post-Processing overlays
-   ========================================================================== */
-:root {
-    --col-bg: #000000;
-    --col-prim: #00ff00;
-    --col-sec: #00aa00;
-    --col-err: #ff0000;
-    --col-warn: #ffaa00;
-    --col-text: #ffffff;
-    --col-dark: #111111;
-    --font-main: 'Arial Black', Impact, sans-serif;
-    --font-mono: 'Courier New', Courier, monospace;
-    --glow-prim: 0 0 10px var(--col-prim), 0 0 20px var(--col-prim), 0 0 40px var(--col-prim);
-    --glow-err: 0 0 10px var(--col-err), 0 0 20px var(--col-err), 0 0 40px var(--col-err);
-    --z-bg: 0;
-    --z-game: 10;
-    --z-hud: 20;
-    --z-ui: 30;
-    --z-modal: 40;
-    --z-overlay: 50;
-}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orbital Descent</title>
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: #000; color: #0f0; font-family: 'Courier New', Courier, monospace;
+            overflow: hidden; user-select: none;
+        }
+        canvas { display: block; width: 100%; height: 100%; }
+        
+        /* UI Overlays */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        .screen { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        .active { display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: auto; }
+        
+        /* 3 Second Intro Animation */
+        #intro-screen { background: #000; z-index: 100; animation: introSequence 3s forwards; }
+        @keyframes introSequence {
+            0% { opacity: 0; transform: scale(0.8); }
+            20% { opacity: 1; transform: scale(1); }
+            80% { opacity: 1; transform: scale(1); filter: blur(0px); }
+            100% { opacity: 0; transform: scale(1.5); filter: blur(10px); pointer-events: none; }
+        }
+        #intro-screen h1 { font-size: 4rem; letter-spacing: 10px; color: #fff; text-shadow: 0 0 20px #0ff; }
 
-* { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-html, body { width: 100%; height: 100%; background-color: var(--col-bg); overflow: hidden; font-family: var(--font-main); color: var(--col-text); overscroll-behavior: none; }
+        /* Menu & Selection */
+        h2 { font-size: 3rem; margin-bottom: 20px; text-transform: uppercase; }
+        .btn { 
+            background: transparent; border: 2px solid #0f0; color: #0f0; 
+            padding: 15px 40px; font-size: 1.5rem; cursor: pointer; margin: 10px;
+            transition: all 0.2s ease; text-transform: uppercase; font-family: inherit;
+        }
+        .btn:hover { background: #0f0; color: #000; box-shadow: 0 0 15px #0f0; }
+        
+        #planet-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; max-width: 800px; }
+        .planet-card {
+            border: 1px solid #333; padding: 15px; text-align: center; cursor: pointer;
+            transition: border-color 0.2s; background: rgba(0,20,0,0.8);
+        }
+        .planet-card:hover { border-color: #0ff; box-shadow: 0 0 10px rgba(0,255,255,0.5); }
+        .planet-card h3 { margin: 0 0 10px 0; color: #0ff; }
+        .planet-card p { margin: 5px 0; font-size: 0.8rem; color: #aaa; }
 
-#game-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: var(--z-game); outline: none; }
-
-/* POST-PROCESSING OVERLAYS */
-.scanlines { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: var(--z-overlay); pointer-events: none; background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1)); background-size: 100% 4px; opacity: 0.3; }
-.vignette { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: var(--z-overlay); pointer-events: none; background: radial-gradient(circle at center, transparent 40%, rgba(0,0,0,0.8) 100%); }
-
-/* UI SCREENS */
-#ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: var(--z-ui); display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
-.screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); pointer-events: auto; }
-.screen.active { display: flex; }
-
-/* TYPOGRAPHY */
-.title { font-size: 12vw; max-font-size: 120px; font-weight: 900; color: var(--col-prim); text-transform: uppercase; letter-spacing: 15px; margin-bottom: 0; text-shadow: var(--glow-prim); font-style: italic; line-height: 1; text-align: center; }
-.subtitle { font-size: 24px; color: var(--col-text); letter-spacing: 5px; margin-bottom: 40px; font-family: var(--font-mono); opacity: 0.8; }
-.stat-box { font-size: 32px; color: var(--col-text); margin-bottom: 20px; text-shadow: 0 0 10px var(--col-text); font-family: var(--font-mono); display: flex; flex-direction: column; align-items: center; }
-.stat-val { font-size: 48px; font-weight: bold; color: var(--col-prim); text-shadow: var(--glow-prim); margin-top: 10px; }
-
-/* BUTTONS */
-.btn-group { display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 400px; padding: 0 20px; }
-.btn { background: rgba(0,25,0,0.8); border: 4px solid var(--col-prim); color: var(--col-prim); padding: 20px 40px; font-size: 28px; font-weight: 900; cursor: pointer; text-transform: uppercase; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); letter-spacing: 4px; box-shadow: 0 0 20px rgba(0,255,0,0.2) inset, 0 0 20px rgba(0,255,0,0.2); position: relative; overflow: hidden; font-family: var(--font-main); }
-.btn::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(0,255,0,0.4), transparent); transition: 0.3s; }
-.btn:hover { background: var(--col-prim); color: var(--col-bg); box-shadow: 0 0 40px var(--col-prim) inset, 0 0 40px var(--col-prim); transform: scale(1.05); }
-.btn:hover::before { left: 100%; }
-.btn:active { transform: scale(0.95); }
-.btn.danger { border-color: var(--col-err); color: var(--col-err); box-shadow: 0 0 20px rgba(255,0,0,0.2) inset, 0 0 20px rgba(255,0,0,0.2); background: rgba(25,0,0,0.8); }
-.btn.danger:hover { background: var(--col-err); color: var(--col-bg); box-shadow: 0 0 40px var(--col-err) inset, 0 0 40px var(--col-err); }
-.btn.small { padding: 10px 20px; font-size: 16px; border-width: 2px; }
-
-/* IN-GAME HUD */
-#hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; pointer-events: none; z-index: var(--z-hud); }
-#score-container { position: absolute; top: 30px; width: 100%; display: flex; justify-content: center; }
-#score { font-size: 80px; font-weight: 900; color: var(--col-text); text-shadow: 0 0 10px #000, 0 0 20px var(--col-prim), 0 0 40px var(--col-prim); }
-.hud-panel { position: absolute; background: rgba(0,0,0,0.5); border: 2px solid var(--col-prim); padding: 15px; font-family: var(--font-mono); font-size: 18px; color: var(--col-prim); backdrop-filter: blur(4px); box-shadow: 0 0 15px rgba(0,255,0,0.2); }
-#speed-panel { bottom: 30px; left: 30px; }
-#tilt-panel { bottom: 30px; right: 30px; display: none; }
-.bar-container { width: 200px; height: 15px; background: #222; border: 1px solid #444; margin-top: 5px; position: relative; overflow: hidden; }
-.bar-fill { height: 100%; background: var(--col-prim); width: 0%; transition: width 0.1s; box-shadow: 0 0 10px var(--col-prim); }
-
-/* CONTROLS */
-#controls-hint { position: absolute; top: 150px; width: 100%; text-align: center; color: rgba(255,255,255,0.5); font-family: var(--font-mono); font-size: 16px; pointer-events: none; }
-#mobile-touch-zones { position: absolute; bottom: 0; left: 0; width: 100%; height: 60%; display: none; z-index: var(--z-hud); pointer-events: auto; }
-.touch-zone { width: 50%; height: 100%; background: rgba(255,255,255,0); }
-.touch-zone:active { background: rgba(255,255,255,0.05); }
-@media (pointer: coarse) { #mobile-touch-zones { display: flex; } }
-
-/* SETTINGS MODAL */
-#settings-modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--col-dark); border: 4px solid var(--col-prim); padding: 40px; z-index: var(--z-modal); display: none; flex-direction: column; width: 90%; max-width: 600px; box-shadow: var(--glow-prim); pointer-events: auto; }
-.setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-family: var(--font-mono); font-size: 20px; color: var(--col-text); border-bottom: 1px solid #333; padding-bottom: 10px; }
-.setting-row label { flex: 1; }
-.toggle-switch { position: relative; width: 60px; height: 34px; }
-.toggle-switch input { opacity: 0; width: 0; height: 0; }
-.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 34px; border: 2px solid #555; }
-.slider:before { position: absolute; content: ""; height: 22px; width: 22px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
-input:checked + .slider { background-color: var(--col-prim); border-color: var(--col-prim); box-shadow: 0 0 10px var(--col-prim); }
-input:checked + .slider:before { transform: translateX(26px); }
-
-/* CALIBRATION SCREEN */
-#tilt-calibrate { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: var(--z-modal); display: none; flex-direction: column; align-items: center; justify-content: center; pointer-events: auto; text-align: center; padding: 20px; }
-.cal-bubble { width: 100px; height: 100px; border: 4px solid var(--col-prim); border-radius: 50%; margin: 40px 0; position: relative; }
-.cal-dot { width: 20px; height: 20px; background: var(--col-err); border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); transition: 0.1s; }
-</style>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+        /* HUD */
+        #hud { 
+            position: absolute; top: 20px; left: 20px; pointer-events: none; 
+            background: rgba(0, 10, 0, 0.8); padding: 15px; border: 1px solid #0f0;
+            display: none; flex-direction: column; gap: 10px; font-size: 1.2rem;
+        }
+        #hud-top-right {
+            position: absolute; top: 20px; right: 20px; pointer-events: none;
+            text-align: right; color: #888; font-size: 0.9rem;
+        }
+        
+        .hud-warning { color: #f00 !important; font-weight: bold; animation: blink 0.5s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+    </style>
 </head>
 <body>
 
-<canvas id="game-canvas"></canvas>
-<div class="scanlines"></div>
-<div class="vignette"></div>
+    <canvas id="gameCanvas"></canvas>
 
-<div id="hud">
-    <div id="score-container"><div id="score">0</div></div>
-    <div id="controls-hint">A/D OR ARROWS TO STEER<br>SPACE TO PAUSE</div>
-    
-    <div class="hud-panel" id="speed-panel">
-        <div>VELOCITY: <span id="val-spd">0</span> u/s</div>
-        <div class="bar-container"><div class="bar-fill" id="bar-spd"></div></div>
-    </div>
-    
-    <div class="hud-panel" id="tilt-panel">
-        <div>TILT ANGLE: <span id="val-tlt">0</span>&deg;</div>
-        <div class="bar-container"><div class="bar-fill" id="bar-tlt" style="background:var(--col-warn); box-shadow: 0 0 10px var(--col-warn);"></div></div>
-    </div>
-    
-    <div id="mobile-touch-zones">
-        <div class="touch-zone" id="tz-left"></div>
-        <div class="touch-zone" id="tz-right"></div>
-    </div>
-</div>
-
-<div id="ui-layer">
-    <div id="screen-menu" class="screen active">
-        <div class="title">SLOPE</div>
-        <div class="subtitle">PROJECT OVERDRIVE</div>
+    <div id="ui-layer">
         
-        <div class="stat-box">HIGH SCORE<div class="stat-val" id="menu-highscore">0</div></div>
-        
-        <div class="btn-group">
-            <button class="btn" id="btn-play">INITIALIZE</button>
-            <button class="btn" id="btn-settings">SYSTEM CONFIG</button>
+        <div id="intro-screen" class="screen active">
+            <h1>SYSTEM BOOT</h1>
         </div>
-    </div>
 
-    <div id="screen-gameover" class="screen">
-        <div class="title" style="color:var(--col-err); text-shadow:var(--glow-err);">CRITICAL FAILURE</div>
-        <div class="subtitle" id="fail-reason" style="color:var(--col-err);">HULL INTEGRITY COMPROMISED</div>
-        
-        <div style="display:flex; gap: 40px; margin-bottom: 40px;">
-            <div class="stat-box">SCORE<div class="stat-val" style="color:#fff; text-shadow: 0 0 20px #fff;" id="go-score">0</div></div>
-            <div class="stat-box">BEST<div class="stat-val" id="go-highscore">0</div></div>
+        <div id="menu-screen" class="screen">
+            <h2>Orbital Descent</h2>
+            <button class="btn" id="btn-start">Start Mission</button>
         </div>
-        
-        <div class="btn-group">
-            <button class="btn danger" id="btn-retry">REBOOT SEQUENCE</button>
-            <button class="btn" id="btn-menu">MAIN MENU</button>
+
+        <div id="select-screen" class="screen">
+            <h2>Select Destination</h2>
+            <div id="planet-grid">
+                </div>
         </div>
-    </div>
 
-    <div id="screen-pause" class="screen">
-        <div class="title" style="color:var(--col-warn); text-shadow:0 0 20px var(--col-warn);">SYSTEM PAUSED</div>
-        <div class="subtitle">TELEMETRY SUSPENDED</div>
-        
-        <div class="btn-group" style="margin-top: 40px;">
-            <button class="btn" id="btn-resume">RESUME</button>
-            <button class="btn danger" id="btn-abort">ABORT MISSION</button>
+        <div id="hud">
+            <div id="hud-alt">ALTITUDE: 00000 m</div>
+            <div id="hud-vel">VELOCITY: 0000.0 m/s</div>
+            <div id="hud-fuel">FUEL: 100%</div>
+            <div id="hud-thrust">THRUST: INACTIVE</div>
+            <div id="hud-grav">GRAVITY: 0.00 m/s²</div>
         </div>
-    </div>
-</div>
+        <div id="hud-top-right">
+            COMMANDER: JAAP<br>VESSEL: SEAHAWK-1
+        </div>
 
-<div id="settings-modal">
-    <h2 style="font-size:36px; color:var(--col-prim); margin-bottom:30px; text-transform:uppercase; text-shadow:var(--glow-prim); text-align:center;">CONFIGURATION</h2>
-    
-    <div class="setting-row">
-        <label>AUDIO SYNTHESIS</label>
-        <label class="toggle-switch"><input type="checkbox" id="set-audio" checked><span class="slider"></span></label>
-    </div>
-    <div class="setting-row">
-        <label>POST-PROCESSING FX</label>
-        <label class="toggle-switch"><input type="checkbox" id="set-fx" checked><span class="slider"></span></label>
-    </div>
-    <div class="setting-row" id="row-tilt" style="display:none;">
-        <label>DEVICE TILT CONTROLS</label>
-        <label class="toggle-switch"><input type="checkbox" id="set-tilt"><span class="slider"></span></label>
-    </div>
-    
-    <div style="display:flex; justify-content:space-between; margin-top:30px;">
-        <button class="btn small" id="btn-cal-tilt" style="display:none;">CALIBRATE TILT</button>
-        <button class="btn small" id="btn-close-settings" style="margin-left:auto;">APPLY & CLOSE</button>
-    </div>
-</div>
+        <div id="end-screen" class="screen">
+            <h2 id="end-title">MISSION STATUS</h2>
+            <p id="end-stats" style="font-size: 1.5rem; margin-bottom: 30px;"></p>
+            <button class="btn" id="btn-restart">Return to Base</button>
+        </div>
 
-<div id="tilt-calibrate">
-    <h2 style="font-size:32px; color:var(--col-prim); margin-bottom:20px;">CALIBRATE ACCELEROMETER</h2>
-    <p style="font-family:var(--font-mono); font-size:18px; color:#aaa; max-width:80%;">Hold your device in a comfortable neutral resting position. The red dot represents your current physical tilt.</p>
-    
-    <div class="cal-bubble">
-        <div class="cal-dot" id="cal-dot"></div>
     </div>
-    
-    <button class="btn" id="btn-set-zero">SET NEUTRAL POSITION</button>
-    <button class="btn small danger" style="margin-top:20px;" id="btn-cancel-cal">CANCEL</button>
-</div>
 
 <script>
 /**
- * ==========================================================================
- * SLOPE: OVERDRIVE - SOURCE CODE
- * Architecture: Custom Physics, Procedural Chunking, Audio Synthesis, WebGL
- * ==========================================================================
+ * ORBITAL DESCENT - CORE ENGINE
+ * Architecture: State Machine, Object-Oriented Entity Component
  */
 
-// ==========================================
-// GLOBALS & CONSTANTS
-// ==========================================
-const CFG = {
-    // PHYSICS
-    GRAVITY: -90.0,
-    BALL_RAD: 1.5,
-    BASE_SPD: 45.0,
-    MAX_SPD: 160.0,
-    SPD_ACCEL: 0.6,
-    STEER_SENS: 35.0,
-    AIR_CONTROL: 0.5,
-    BOUNCE_DAMP: 0.3,
-    TILT_MAX_ANG: 45, // Degrees for max steering
-    
-    // WORLD
-    TRK_W: 24.0,
-    WALL_H: 8.0,
-    CHUNK_L: 120.0,
-    SAFE_Z: 400.0, // Initial safe run
-    GAP_L: 35.0,
-    
-    // COLORS
-    C_BG: 0x020202,
-    C_BALL: 0x00ff00,
-    C_BALL_IN: 0x003300,
-    C_TRK_F: 0x0a0a0a,
-    C_TRK_E: 0x00ff00,
-    C_OBS_F: 0x1a0000,
-    C_OBS_E: 0xff0000,
-    
-    // SYSTEM
-    FPS: 60,
-    DT_MAX: 0.1,
-    VER: "1.4.2"
+// --- REAL WORLD PLANETARY DATA ---
+const PLANET_DATA = {
+    Mercury: { radius: 2439.7, gravity: 3.7, atmDensity: 0, color: '#888888', safeVelocity: 15 },
+    Venus:   { radius: 6051.8, gravity: 8.87, atmDensity: 65, color: '#e0c080', safeVelocity: 10 },
+    Earth:   { radius: 6371.0, gravity: 9.807, atmDensity: 1.2, color: '#2b82c9', safeVelocity: 12 },
+    Mars:    { radius: 3389.5, gravity: 3.721, atmDensity: 0.02, color: '#c1440e', safeVelocity: 15 },
+    Jupiter: { radius: 69911, gravity: 24.79, atmDensity: 100, color: '#d39c7e', safeVelocity: 5 }, // Gas giant, impossible landing
+    Saturn:  { radius: 58232, gravity: 10.44, atmDensity: 80, color: '#ead6b8', safeVelocity: 5 },
+    Uranus:  { radius: 25362, gravity: 8.69, atmDensity: 50, color: '#4b70dd', safeVelocity: 8 },
+    Neptune: { radius: 24622, gravity: 11.15, atmDensity: 60, color: '#274687', safeVelocity: 8 }
 };
 
-const STATE = {
-    MENU: 0,
-    PLAY: 1,
-    PAUSE: 2,
-    OVER: 3,
-    CALIB: 4
-};
-
-// Data Store
-let DB = {
-    high: parseInt(localStorage.getItem('slp_hi')) || 0,
-    audio: localStorage.getItem('slp_au') !== 'false',
-    fx: localStorage.getItem('slp_fx') !== 'false',
-    tiltEn: localStorage.getItem('slp_ti') === 'true',
-    tiltZero: parseFloat(localStorage.getItem('slp_tz')) || 0.0,
-    
-    save: function() {
-        localStorage.setItem('slp_hi', this.high);
-        localStorage.setItem('slp_au', this.audio);
-        localStorage.setItem('slp_fx', this.fx);
-        localStorage.setItem('slp_ti', this.tiltEn);
-        localStorage.setItem('slp_tz', this.tiltZero);
-    }
-};
-
-// ==========================================
-// AUDIO SYNTHESIS ENGINE (Zero Assets)
-// ==========================================
-class AudioSys {
+// --- GAME ENGINE CLASSES ---
+class Game {
     constructor() {
-        this.ctx = null;
-        this.master = null;
-        this.initd = false;
-        this.bgm = { o1: null, o2: null, g: null, lfo: null };
-        this.isPlay = false;
-    }
-    
-    init() {
-        if(this.initd || !DB.audio) return;
-        try {
-            window.AudioContext = window.AudioContext || window.webkitAudioContext;
-            this.ctx = new AudioContext();
-            this.master = this.ctx.createGain();
-            this.master.gain.value = 0.4;
-            
-            let comp = this.ctx.createDynamicsCompressor();
-            comp.threshold.value = -20;
-            comp.knee.value = 10;
-            comp.ratio.value = 12;
-            comp.attack.value = 0;
-            comp.release.value = 0.25;
-            
-            this.master.connect(comp);
-            comp.connect(this.ctx.destination);
-            this.initd = true;
-        } catch(e) { console.log("Audio API fail"); }
-    }
-    
-    tone(f, t, d, v, sF=null) {
-        if(!this.initd || this.ctx.state==='suspended' || !DB.audio) return;
-        let o = this.ctx.createOscillator(), g = this.ctx.createGain();
-        o.type = t; o.frequency.setValueAtTime(f, this.ctx.currentTime);
-        if(sF) o.frequency.exponentialRampToValueAtTime(sF, this.ctx.currentTime+d);
-        g.gain.setValueAtTime(v, this.ctx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime+d);
-        o.connect(g); g.connect(this.master); o.start(); o.stop(this.ctx.currentTime+d);
-    }
-    
-    noise(d, v, f=1000, t='lowpass') {
-        if(!this.initd || this.ctx.state==='suspended' || !DB.audio) return;
-        let bs = this.ctx.sampleRate * d;
-        let bf = this.ctx.createBuffer(1, bs, this.ctx.sampleRate);
-        let da = bf.getChannelData(0);
-        for(let i=0; i<bs; i++) da[i] = Math.random()*2-1;
-        let ns = this.ctx.createBufferSource(); ns.buffer = bf;
-        let fil = this.ctx.createBiquadFilter(); fil.type = t; fil.frequency.value = f;
-        let g = this.ctx.createGain(); g.gain.setValueAtTime(v, this.ctx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime+d);
-        ns.connect(fil); fil.connect(g); g.connect(this.master); ns.start();
-    }
-    
-    playBGM() {
-        if(!this.initd) this.init();
-        if(!this.initd || this.isPlay || !DB.audio) return;
-        
-        let c = this.ctx;
-        this.bgm.o1 = c.createOscillator(); this.bgm.o1.type = 'square'; this.bgm.o1.frequency.value = 55; // A1
-        this.bgm.o2 = c.createOscillator(); this.bgm.o2.type = 'sawtooth'; this.bgm.o2.frequency.value = 110; // A2
-        
-        this.bgm.g = c.createGain(); this.bgm.g.gain.value = 0.2;
-        
-        // Synthwave pulsing bass
-        this.bgm.lfo = c.createOscillator(); this.bgm.lfo.type = 'sine'; this.bgm.lfo.frequency.value = 4.0; // 16th notes approx
-        let lg = c.createGain(); lg.gain.value = 0.5;
-        this.bgm.lfo.connect(lg); lg.connect(this.bgm.g.gain);
-        
-        let fil = c.createBiquadFilter(); fil.type = 'lowpass'; fil.frequency.value = 800;
-        
-        this.bgm.o1.connect(fil); this.bgm.o2.connect(fil); fil.connect(this.bgm.g); this.bgm.g.connect(this.master);
-        this.bgm.o1.start(); this.bgm.o2.start(); this.bgm.lfo.start();
-        this.isPlay = true;
-    }
-    
-    stopBGM() {
-        if(!this.isPlay) return;
-        this.bgm.g.gain.linearRampToValueAtTime(0, this.ctx.currentTime+0.5);
-        setTimeout(()=>{
-            if(this.bgm.o1) this.bgm.o1.stop();
-            if(this.bgm.o2) this.bgm.o2.stop();
-            if(this.bgm.lfo) this.bgm.lfo.stop();
-            this.isPlay = false;
-        }, 500);
-    }
-    
-    fxUI() { this.tone(800, 'sine', 0.1, 0.3); }
-    fxStart() { this.tone(440, 'square', 0.2, 0.3, 880); }
-    fxCrash() { this.noise(1.5, 0.8, 400); this.tone(80, 'sawtooth', 1.0, 0.6, 20); }
-    fxPoint() { this.tone(1200, 'square', 0.1, 0.2); setTimeout(()=>this.tone(1600, 'square', 0.1, 0.2), 100); }
-    fxJump() { this.tone(150, 'sine', 0.4, 0.3, 400); }
-}
-const AU = new AudioSys();
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
 
-// ==========================================
-// INPUT CONTROLLER (Key, Touch, Tilt)
-// ==========================================
-class InputCtrl {
-    constructor() {
-        this.k = { l:0, r:0, spc:0 };
-        this.t = { l:0, r:0 };
-        this.tilt = { raw:0, val:0, active:false };
+        this.state = 'INTRO'; // INTRO, MENU, SELECT, FLIGHT, END
+        this.lastTime = 0;
         
-        window.addEventListener('keydown', e=>{
-            if(e.code==='ArrowLeft'||e.code==='KeyA') this.k.l=1;
-            if(e.code==='ArrowRight'||e.code==='KeyD') this.k.r=1;
-            if(e.code==='Space') { this.k.spc=1; if(GAME) GAME.handlePauseToggle(); }
-            AU.init();
+        this.ship = new Ship();
+        this.targetPlanet = null;
+        this.stars = this.generateStars(200);
+
+        this.initUI();
+        this.bindEvents();
+        
+        // 3-second intro logic
+        setTimeout(() => {
+            if (this.state === 'INTRO') this.changeState('MENU');
+        }, 3000);
+
+        requestAnimationFrame((t) => this.loop(t));
+    }
+
+    initUI() {
+        // Populate Planet Grid
+        const grid = document.getElementById('planet-grid');
+        for (const [name, data] of Object.entries(PLANET_DATA)) {
+            const card = document.createElement('div');
+            card.className = 'planet-card';
+            card.innerHTML = `
+                <h3 style="color:${data.color}">${name}</h3>
+                <p>Gravity: ${data.gravity} m/s²</p>
+                <p>Radius: ${data.radius} km</p>
+            `;
+            card.onclick = () => this.selectPlanet(name);
+            grid.appendChild(card);
+        }
+
+        // Buttons
+        document.getElementById('btn-start').onclick = () => this.changeState('SELECT');
+        document.getElementById('btn-restart').onclick = () => this.changeState('MENU');
+    }
+
+    bindEvents() {
+        window.addEventListener('resize', () => {
+            this.width = window.innerWidth;
+            this.height = window.innerHeight;
+            this.canvas.width = this.width;
+            this.canvas.height = this.height;
         });
-        window.addEventListener('keyup', e=>{
-            if(e.code==='ArrowLeft'||e.code==='KeyA') this.k.l=0;
-            if(e.code==='ArrowRight'||e.code==='KeyD') this.k.r=0;
-            if(e.code==='Space') this.k.spc=0;
-        });
-        
-        let tl = document.getElementById('tz-left'), tr = document.getElementById('tz-right');
-        const bt = (el, dir) => {
-            el.addEventListener('touchstart', e=>{e.preventDefault(); this.t[dir]=1; AU.init();});
-            el.addEventListener('touchend', e=>{e.preventDefault(); this.t[dir]=0;});
-            el.addEventListener('touchcancel', e=>{e.preventDefault(); this.t[dir]=0;});
-        };
-        bt(tl, 'l'); bt(tr, 'r');
-        
-        // Tilt Control (DeviceOrientation API)
-        this.hasSensors = false;
-        if(window.DeviceOrientationEvent) {
-            window.addEventListener('deviceorientation', e => this.handleTilt(e), false);
-            // Check if we need iOS permission
-            if(typeof DeviceOrientationEvent.requestPermission === 'function') {
-                document.getElementById('btn-cal-tilt').innerText = "AUTHORIZE SENSORS";
-            }
-        }
-    }
-    
-    reqTiltPerms() {
-        if(typeof DeviceOrientationEvent.requestPermission === 'function') {
-            DeviceOrientationEvent.requestPermission().then(res => {
-                if(res === 'granted') { this.hasSensors = true; document.getElementById('btn-cal-tilt').innerText = "CALIBRATE TILT"; UI.startCalib(); }
-            }).catch(console.error);
-        } else {
-            this.hasSensors = true; UI.startCalib();
-        }
-    }
-    
-    handleTilt(e) {
-        if(!e.gamma && !e.beta) return; // No real data
-        this.hasSensors = true;
-        
-        // Depending on device orientation (portrait vs landscape)
-        let ang = 0;
-        let o = window.orientation || 0;
-        
-        if(o === 90) ang = e.beta; // Landscape left
-        else if(o === -90) ang = -e.beta; // Landscape right
-        else ang = e.gamma; // Portrait
-        
-        // Clamp and smooth
-        this.tilt.raw = ang;
-        
-        if(DB.tiltEn && GAME && GAME.state === STATE.PLAY) {
-            let offset = ang - DB.tiltZero;
-            // Normalize to -1 to 1 based on MAX_ANG
-            let norm = offset / CFG.TILT_MAX_ANG;
-            this.tilt.val = Math.max(-1.0, Math.min(1.0, norm));
-            
-            // HUD Update
-            document.getElementById('val-tlt').innerText = Math.floor(offset);
-            let fp = (this.tilt.val + 1) * 50; // 0 to 100%
-            document.getElementById('bar-tlt').style.width = fp + '%';
-        }
-    }
-    
-    getAxis() {
-        if(DB.tiltEn && this.hasSensors && Math.abs(this.tilt.val) > 0.05) {
-            return this.tilt.val; // Tilt overrides touch/keys if active and beyond deadzone
-        }
-        let a = 0;
-        if(this.k.l || this.t.l) a += 1; // Left is positive X in our camera setup
-        if(this.k.r || this.t.r) a -= 1;
-        return a;
-    }
-}
-const INP = new InputCtrl();
 
-// ==========================================
-// SHADER LIBRARY (Neon Grid Wireframe)
-// ==========================================
-const SHADERS = {
-    vert: `
-        varying vec2 vUv;
-        varying vec3 vWorld;
-        void main() {
-            vUv = uv;
-            vec4 wp = modelMatrix * vec4(position, 1.0);
-            vWorld = wp.xyz;
-            gl_Position = projectionMatrix * viewMatrix * wp;
-        }
-    `,
-    frag: `
-        uniform vec3 uBaseCol;
-        uniform vec3 uLineCol;
-        uniform float uGridSz;
-        uniform float uLineThick;
-        uniform float uEdgeIntens;
-        
-        varying vec2 vUv;
-        varying vec3 vWorld;
-        
-        void main() {
-            // World space grid for infinite scrolling match
-            vec2 gp = vWorld.xz / uGridSz;
-            vec2 grid = abs(fract(gp - 0.5) - 0.5) / fwidth(gp);
-            float line = min(grid.x, grid.y);
-            float lAlpha = 1.0 - smoothstep(0.0, uLineThick, line);
-            
-            // Block edge highlight
-            vec2 edge = abs(vUv - 0.5) * 2.0;
-            float eAlpha = max(smoothstep(0.92, 1.0, edge.x), smoothstep(0.92, 1.0, edge.y)) * uEdgeIntens;
-            
-            float finA = max(lAlpha * 0.4, eAlpha);
-            vec3 finCol = mix(uBaseCol, uLineCol, finA);
-            
-            // Subtle distance fade
-            float dist = length(vWorld.xz - cameraPosition.xz);
-            float fog = smoothstep(200.0, 500.0, dist);
-            finCol = mix(finCol, vec3(0.0), fog);
-            
-            gl_FragColor = vec4(finCol, 1.0);
-        }
-    `
-};
-
-function GenMat(baseHex, lineHex, edgeI = 1.0) {
-    return new THREE.ShaderMaterial({
-        vertexShader: SHADERS.vert, fragmentShader: SHADERS.frag,
-        uniforms: {
-            uBaseCol: { value: new THREE.Color(baseHex) },
-            uLineCol: { value: new THREE.Color(lineHex) },
-            uGridSz: { value: 2.0 }, uLineThick: { value: 1.5 }, uEdgeIntens: { value: edgeI }
-        }
-    });
-}
-
-// Materials Cache
-const MATS = {
-    trk: null, obs: null, wall: null
-};
-function InitMats() {
-    MATS.trk = GenMat(CFG.C_TRK_F, CFG.C_TRK_E, 0.5);
-    MATS.obs = GenMat(CFG.C_OBS_F, CFG.C_OBS_E, 2.0);
-    MATS.wall = GenMat(CFG.C_TRK_F, CFG.C_TRK_E, 1.5);
-}
-
-// ==========================================
-// PHYSICS ENGINE (Sphere vs AABB)
-// ==========================================
-class PhysObj {
-    constructor() {
-        this.p = new THREE.Vector3();
-        this.v = new THREE.Vector3();
-        this.rad = 0; this.isStat = false;
-        this.box = new THREE.Box3();
-    }
-}
-
-class CollisionSys {
-    // Returns normal and penetration depth if hit
-    static sphereVsAABB(sp, sr, box) {
-        let cp = new THREE.Vector3(
-            Math.max(box.min.x, Math.min(sp.x, box.max.x)),
-            Math.max(box.min.y, Math.min(sp.y, box.max.y)),
-            Math.max(box.min.z, Math.min(sp.z, box.max.z))
-        );
-        let dSq = cp.distanceToSquared(sp);
-        if(dSq < sr*sr) {
-            let d = Math.sqrt(dSq);
-            let n = new THREE.Vector3().subVectors(sp, cp);
-            if(d === 0) { n.set(0,1,0); d = 0.001; } else { n.normalize(); }
-            return { hit: true, n: n, p: sr - d };
-        }
-        return { hit: false };
-    }
-}
-
-// ==========================================
-// PROCEDURAL LEVEL GENERATION
-// ==========================================
-class Chunk {
-    constructor(sc, zStart, type) {
-        this.sc = sc;
-        this.sz = zStart;
-        this.ez = zStart - CFG.CHUNK_L;
-        this.type = type;
-        this.meshes = [];
-        this.cols = []; // { box, type, isHaz, dyn }
-        this.build();
-    }
-    
-    addMesh(geo, mat, x, y, z) {
-        let m = new THREE.Mesh(geo, mat);
-        m.position.set(x, y, z);
-        this.sc.add(m); this.meshes.push(m);
-        return m;
-    }
-    
-    addCol(m, t, haz=false, dyn=false) {
-        m.updateMatrixWorld();
-        this.cols.push({ b: new THREE.Box3().setFromObject(m), m: m, t: t, haz: haz, dyn: dyn });
-    }
-    
-    build() {
-        let w = CFG.TRK_W, l = CFG.CHUNK_L, wh = CFG.WALL_H;
-        
-        // Base Floor
-        if(this.type !== 'gap') {
-            let fG = new THREE.BoxGeometry(w, 2, l);
-            let fM = this.addMesh(fG, MATS.trk, 0, -1, this.sz - l/2);
-            this.addCol(fM, 'floor');
-            
-            // Side Walls (Slanted invisible colliders + visual rim)
-            let wG = new THREE.BoxGeometry(2, wh, l);
-            let wl = this.addMesh(wG, MATS.wall, w/2 + 1, wh/2 - 1, this.sz - l/2);
-            let wr = this.addMesh(wG, MATS.wall, -w/2 - 1, wh/2 - 1, this.sz - l/2);
-            this.addCol(wl, 'wall', true); // Hitting walls is death in hardcore
-            this.addCol(wr, 'wall', true);
-        }
-        
-        // Patterns
-        if(this.type === 'start') {
-            // Empty safe zone
-        } 
-        else if(this.type === 'blocks') {
-            let n = Math.floor(Math.random()*4) + 1;
-            for(let i=0; i<n; i++) {
-                let bw = Math.random()*(w/2) + 2, bh = Math.random()*3 + 2, bd = Math.random()*5 + 2;
-                let bx = (Math.random()-0.5)*(w-bw), bz = this.sz - 10 - Math.random()*(l-20);
-                let m = this.addMesh(new THREE.BoxGeometry(bw, bh, bd), MATS.obs, bx, bh/2, bz);
-                this.addCol(m, 'obs', true);
-            }
-        }
-        else if(this.type === 'moving') {
-            let bw = w*0.6;
-            let m = this.addMesh(new THREE.BoxGeometry(bw, 4, 4), MATS.obs, 0, 2, this.sz - l/2);
-            m.userData = { dir: Math.random()>0.5?1:-1, spd: Math.random()*15+10, bnd: w/2 - bw/2 };
-            this.addCol(m, 'obs', true, true);
-        }
-        else if(this.type === 'tunnel') {
-            let n = 5;
-            for(let i=0; i<n; i++) {
-                let openX = (Math.random()-0.5)*(w/2);
-                let z = this.sz - (l/n)*i - (l/n)/2;
-                
-                let wl = this.addMesh(new THREE.BoxGeometry(w, 10, 2), MATS.obs, openX + w/2 + 4, 5, z);
-                let wr = this.addMesh(new THREE.BoxGeometry(w, 10, 2), MATS.obs, openX - w/2 - 4, 5, z);
-                this.addCol(wl, 'obs', true); this.addCol(wr, 'obs', true);
-            }
-        }
-        else if(this.type === 'gap') {
-            let gL = CFG.GAP_L;
-            let plL = (l - gL)/2;
-            
-            // Pre gap
-            let p1 = this.addMesh(new THREE.BoxGeometry(w, 2, plL), MATS.trk, 0, -1, this.sz - plL/2);
-            this.addCol(p1, 'floor');
-            
-            // Ramp up slightly
-            let rmp = this.addMesh(new THREE.BoxGeometry(w, 2, 5), MATS.trk, 0, 0.5, this.sz - plL + 2.5);
-            rmp.rotation.x = -0.1;
-            this.addCol(rmp, 'floor');
-            
-            // Post gap (lower)
-            let drop = 5 + Math.random()*10;
-            let p2 = this.addMesh(new THREE.BoxGeometry(w, 2, plL), MATS.trk, 0, -1-drop, this.sz - l + plL/2);
-            this.addCol(p2, 'floor');
-            
-            // Walls for parts
-            let wG = new THREE.BoxGeometry(2, wh, plL);
-            let w1l = this.addMesh(wG, MATS.wall, w/2+1, wh/2-1, this.sz - plL/2); this.addCol(w1l, 'wall', true);
-            let w1r = this.addMesh(wG, MATS.wall, -w/2-1, wh/2-1, this.sz - plL/2); this.addCol(w1r, 'wall', true);
-            let w2l = this.addMesh(wG, MATS.wall, w/2+1, wh/2-1-drop, this.sz - l + plL/2); this.addCol(w2l, 'wall', true);
-            let w2r = this.addMesh(wG, MATS.wall, -w/2-1, wh/2-1-drop, this.sz - l + plL/2); this.addCol(w2r, 'wall', true);
-        }
-    }
-    
-    update(dt) {
-        for(let c of this.cols) {
-            if(c.dyn) {
-                let m = c.m, ud = m.userData;
-                m.position.x += ud.dir * ud.spd * dt;
-                if(Math.abs(m.position.x) > ud.bnd) { ud.dir *= -1; m.position.x = Math.sign(m.position.x)*ud.bnd; }
-                c.b.setFromObject(m);
-            }
-        }
-    }
-    
-    dispose() {
-        for(let m of this.meshes) { m.geometry.dispose(); this.sc.remove(m); }
-    }
-}
-
-class LevelGen {
-    constructor(sc) {
-        this.sc = sc;
-        this.chunks = [];
-        this.lastZ = 0;
-        this.types = ['blocks', 'blocks', 'moving', 'tunnel', 'gap', 'blocks'];
-    }
-    
-    reset() {
-        for(let c of this.chunks) c.dispose();
-        this.chunks = [];
-        this.lastZ = 50;
-        
-        // Initial runway
-        for(let i=0; i<Math.ceil(CFG.SAFE_Z/CFG.CHUNK_L); i++) this.add('start');
-        for(let i=0; i<3; i++) this.add();
-    }
-    
-    add(type=null) {
-        if(!type) type = this.types[Math.floor(Math.random()*this.types.length)];
-        let c = new Chunk(this.sc, this.lastZ, type);
-        this.chunks.push(c);
-        this.lastZ -= CFG.CHUNK_L;
-    }
-    
-    update(pz, dt) {
-        for(let c of this.chunks) c.update(dt);
-        // GC
-        if(this.chunks.length > 0 && pz < this.chunks[0].ez - 100) {
-            this.chunks[0].dispose();
-            this.chunks.shift();
-            this.add();
-        }
-    }
-    
-    getCols() {
-        let a = [];
-        for(let c of this.chunks) a.push(...c.cols);
-        return a;
-    }
-}
-
-// ==========================================
-// PLAYER ENTITY
-// ==========================================
-class Player {
-    constructor(sc) {
-        this.sc = sc;
-        this.rad = CFG.BALL_RAD;
-        
-        // Outer Wireframe
-        let geo = new THREE.IcosahedronGeometry(this.rad, 2);
-        let mat = new THREE.MeshBasicMaterial({ color: CFG.C_BALL, wireframe: true, transparent: true, opacity: 0.8 });
-        this.m = new THREE.Mesh(geo, mat);
-        
-        // Inner Core
-        let cGeo = new THREE.SphereGeometry(this.rad*0.8, 16, 16);
-        let cMat = new THREE.MeshBasicMaterial({ color: CFG.C_BALL_IN });
-        this.c = new THREE.Mesh(cGeo, cMat);
-        this.m.add(this.c);
-        
-        this.sc.add(this.m);
-        this.reset();
-    }
-    
-    reset() {
-        this.p = new THREE.Vector3(0, 15, 0); // Drop in
-        this.v = new THREE.Vector3(0, 0, 0);
-        this.spd = CFG.BASE_SPD;
-        this.m.position.copy(this.p);
-        this.m.rotation.set(0,0,0);
-        this.grnd = false;
-        this.dead = false;
-        this.dReason = "";
-    }
-    
-    update(dt, cols) {
-        if(this.dead) return;
-        
-        // Speed scaling
-        this.spd += CFG.SPD_ACCEL * dt;
-        if(this.spd > CFG.MAX_SPD) this.spd = CFG.MAX_SPD;
-        
-        // Input
-        let axis = INP.getAxis();
-        let steerTarget = axis * CFG.STEER_SENS;
-        
-        // Air control is reduced
-        let ctrlMult = this.grnd ? 1.0 : CFG.AIR_CONTROL;
-        this.v.x += (steerTarget - this.v.x) * 10.0 * ctrlMult * dt;
-        
-        // Forward drive
-        this.v.z = -this.spd;
-        
-        // Gravity
-        this.v.y += CFG.GRAVITY * dt;
-        
-        // Predictive Pos
-        let np = this.p.clone().add(this.v.clone().multiplyScalar(dt));
-        
-        // Physics Resolve
-        this.grnd = false;
-        let nb = cols.filter(c => c.b.distanceToPoint(this.p) < this.rad * 4);
-        
-        for(let c of nb) {
-            let res = CollisionSys.sphereVsAABB(np, this.rad, c.b);
-            if(res.hit) {
-                if(c.haz) { this.die("IMPACT DETECTED"); return; }
-                
-                np.add(res.n.clone().multiplyScalar(res.p)); // push out
-                
-                let vn = this.v.dot(res.n);
-                if(vn < 0) {
-                    // Bounce / Friction
-                    let vBounce = res.n.clone().multiplyScalar(vn * (1.0 + CFG.BOUNCE_DAMP));
-                    this.v.sub(vBounce);
-                    
-                    if(res.n.y > 0.5) this.grnd = true;
+        window.addEventListener('keydown', (e) => {
+            if (this.state === 'FLIGHT') {
+                if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+                    this.ship.isThrusting = true;
                 }
             }
-        }
-        
-        this.p.copy(np);
-        this.m.position.copy(this.p);
-        
-        // Visual Roll
-        if(this.grnd) {
-            let rAx = new THREE.Vector3(-this.v.z, 0, this.v.x).normalize();
-            let rAng = (this.v.length() * dt) / this.rad;
-            this.m.rotateOnWorldAxis(rAx, rAng);
-        }
-        
-        // Death condition: fell into void
-        if(this.p.y < -30) this.die("SIGNAL LOST (VOID)");
-    }
-    
-    die(reason) {
-        this.dead = true;
-        this.dReason = reason;
-        this.m.visible = false;
-    }
-}
+        });
 
-// ==========================================
-// PARTICLES
-// ==========================================
-class FXSys {
-    constructor(sc) {
-        this.sc = sc;
-        this.p = [];
-        this.g = new THREE.BoxGeometry(0.8, 0.8, 0.8);
-        this.m1 = new THREE.MeshBasicMaterial({ color: CFG.C_BALL, wireframe: true });
-        this.m2 = new THREE.MeshBasicMaterial({ color: CFG.C_OBS_E });
-    }
-    
-    explode(pos) {
-        for(let i=0; i<60; i++) {
-            let m = new THREE.Mesh(this.g, Math.random()>0.3 ? this.m1 : this.m2);
-            m.position.copy(pos);
-            let v = new THREE.Vector3((Math.random()-0.5)*60, Math.random()*50+10, (Math.random()-0.5)*60);
-            this.sc.add(m);
-            this.p.push({ m: m, v: v, l: 1.5, ml: 1.5 });
-        }
-    }
-    
-    update(dt) {
-        for(let i=this.p.length-1; i>=0; i--) {
-            let pt = this.p[i];
-            pt.v.y += CFG.GRAVITY * 0.5 * dt;
-            pt.m.position.add(pt.v.clone().multiplyScalar(dt));
-            pt.m.rotation.x += pt.v.x * 0.1 * dt; pt.m.rotation.y += pt.v.y * 0.1 * dt;
-            pt.l -= dt;
-            let s = Math.max(0, pt.l/pt.ml);
-            pt.m.scale.setScalar(s);
-            if(pt.l <= 0) { this.sc.remove(pt.m); this.p.splice(i,1); }
-        }
-    }
-}
-
-// ==========================================
-// MAIN GAME ENGINE
-// ==========================================
-class Engine {
-    constructor() {
-        this.cont = document.getElementById('game-canvas');
-        this.sc = new THREE.Scene();
-        this.sc.fog = new THREE.FogExp2(CFG.C_BG, 0.003);
-        
-        this.cam = new THREE.PerspectiveCamera(80, window.innerWidth/window.innerHeight, 0.1, 1000);
-        this.ren = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance", alpha: false });
-        this.ren.setSize(window.innerWidth, window.innerHeight);
-        this.ren.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Perf limit
-        this.ren.setClearColor(CFG.C_BG);
-        this.cont.appendChild(this.ren.domElement);
-        
-        InitMats();
-        
-        this.lvl = new LevelGen(this.sc);
-        this.plr = new Player(this.sc);
-        this.fx = new FXSys(this.sc);
-        
-        this.clk = new THREE.Clock();
-        this.state = STATE.MENU;
-        this.score = 0;
-        
-        window.addEventListener('resize', ()=>this.resize());
-        this.initUI();
-        
-        // Start Render Loop
-        this.ren.setAnimationLoop(()=>this.loop());
-    }
-    
-    resize() {
-        this.cam.aspect = window.innerWidth/window.innerHeight;
-        this.cam.updateProjectionMatrix();
-        this.ren.setSize(window.innerWidth, window.innerHeight);
-    }
-    
-    initUI() {
-        document.getElementById('menu-highscore').innerText = DB.high;
-        
-        document.getElementById('btn-play').onclick = () => { AU.fxStart(); this.start(); };
-        document.getElementById('btn-retry').onclick = () => { AU.fxStart(); this.start(); };
-        document.getElementById('btn-menu').onclick = () => { AU.fxUI(); this.state = STATE.MENU; UI.setState('screen-menu'); };
-        
-        document.getElementById('btn-resume').onclick = () => this.handlePauseToggle();
-        document.getElementById('btn-abort').onclick = () => { this.state = STATE.MENU; UI.setState('screen-menu'); AU.stopBGM(); };
-        
-        // Settings Binding
-        document.getElementById('btn-settings').onclick = () => { AU.fxUI(); document.getElementById('settings-modal').style.display = 'flex'; };
-        document.getElementById('btn-close-settings').onclick = () => { AU.fxUI(); document.getElementById('settings-modal').style.display = 'none'; DB.save(); };
-        
-        // Sync toggles to DB
-        let tAu = document.getElementById('set-audio'), tFx = document.getElementById('set-fx'), tTi = document.getElementById('set-tilt');
-        tAu.checked = DB.audio; tFx.checked = DB.fx; tTi.checked = DB.tiltEn;
-        
-        tAu.onchange = (e) => { DB.audio = e.target.checked; if(!DB.audio) AU.stopBGM(); };
-        tFx.onchange = (e) => { DB.fx = e.target.checked; document.querySelector('.scanlines').style.display = DB.fx ? 'block' : 'none'; document.querySelector('.vignette').style.display = DB.fx ? 'block' : 'none'; };
-        tTi.onchange = (e) => { 
-            DB.tiltEn = e.target.checked; 
-            if(DB.tiltEn) INP.reqTiltPerms(); 
-            document.getElementById('btn-cal-tilt').style.display = DB.tiltEn ? 'block' : 'none';
-        };
-        
-        // Initial setup for tilt visibility
-        if(window.DeviceOrientationEvent) document.getElementById('row-tilt').style.display = 'flex';
-        if(DB.tiltEn) document.getElementById('btn-cal-tilt').style.display = 'block';
-        
-        document.getElementById('btn-cal-tilt').onclick = () => { AU.fxUI(); INP.reqTiltPerms(); };
-        document.getElementById('btn-cancel-cal').onclick = () => { AU.fxUI(); UI.endCalib(); };
-        document.getElementById('btn-set-zero').onclick = () => { 
-            DB.tiltZero = INP.tilt.raw; DB.save(); AU.fxPoint(); 
-            document.getElementById('btn-set-zero').innerText = "CALIBRATED!";
-            setTimeout(()=>{document.getElementById('btn-set-zero').innerText = "SET NEUTRAL POSITION"; UI.endCalib();}, 1000);
-        };
-        
-        // Apply initial FX state
-        document.querySelector('.scanlines').style.display = DB.fx ? 'block' : 'none';
-        document.querySelector('.vignette').style.display = DB.fx ? 'block' : 'none';
-    }
-    
-    start() {
-        this.lvl.reset();
-        this.plr.reset();
-        this.plr.m.visible = true;
-        this.score = 0;
-        this.updScore();
-        this.state = STATE.PLAY;
-        UI.setState(null);
-        AU.playBGM();
-        
-        // Setup Tilt HUD if active
-        document.getElementById('tilt-panel').style.display = DB.tiltEn ? 'block' : 'none';
-    }
-    
-    handlePauseToggle() {
-        if(this.state === STATE.PLAY) {
-            this.state = STATE.PAUSE;
-            UI.setState('screen-pause');
-            AU.fxUI();
-        } else if(this.state === STATE.PAUSE) {
-            this.state = STATE.PLAY;
-            UI.setState(null);
-            AU.fxUI();
-        }
-    }
-    
-    gameOver() {
-        this.state = STATE.OVER;
-        AU.stopBGM();
-        AU.fxCrash();
-        this.fx.explode(this.plr.p);
-        
-        if(this.score > DB.high) { DB.high = this.score; DB.save(); }
-        
-        document.getElementById('go-score').innerText = this.score;
-        document.getElementById('go-highscore').innerText = DB.high;
-        document.getElementById('menu-highscore').innerText = DB.high;
-        document.getElementById('fail-reason').innerText = this.plr.dReason;
-        
-        setTimeout(() => UI.setState('screen-gameover'), 1500);
-    }
-    
-    updScore() {
-        document.getElementById('score').innerText = this.score;
-        
-        // Speedometer
-        document.getElementById('val-spd').innerText = Math.floor(this.plr.spd);
-        let sP = ((this.plr.spd - CFG.BASE_SPD) / (CFG.MAX_SPD - CFG.BASE_SPD)) * 100;
-        document.getElementById('bar-spd').style.width = Math.max(0, Math.min(100, sP)) + '%';
-        
-        // Tilt is updated in InputCtrl.handleTilt directly for perf
-    }
-    
-    loop() {
-        let dt = this.clk.getDelta();
-        if(dt > CFG.DT_MAX) dt = CFG.DT_MAX;
-        
-        if(this.state === STATE.PLAY) {
-            this.lvl.update(this.plr.p.z, dt);
-            this.plr.update(dt, this.lvl.getCols());
-            
-            // Cam logic: Dynamic Follow
-            let tCam = this.plr.p.clone().add(new THREE.Vector3(0, 12, 18));
-            this.cam.position.lerp(tCam, 8.0 * dt);
-            
-            let lookT = this.plr.p.clone().add(new THREE.Vector3(this.plr.v.x*0.1, -2, -30));
-            
-            // FOV speed warp effect
-            let tFov = 80 + ((this.plr.spd - CFG.BASE_SPD) * 0.3);
-            this.cam.fov += (tFov - this.cam.fov) * 5.0 * dt;
-            this.cam.updateProjectionMatrix();
-            
-            this.cam.lookAt(lookT);
-            
-            // Score calc
-            let cs = Math.floor(Math.max(0, -this.plr.p.z / 10));
-            if(cs > this.score) {
-                if(cs % 50 === 0 && cs > 0) AU.fxPoint();
-                this.score = cs;
-                this.updScore();
+        window.addEventListener('keyup', (e) => {
+            if (this.state === 'FLIGHT') {
+                if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+                    this.ship.isThrusting = false;
+                }
             }
-            
-            if(this.plr.dead) this.gameOver();
-            
-        } else if (this.state === STATE.OVER) {
-            this.fx.update(dt);
-            // Dramatic cam pan
-            this.cam.position.y -= 2 * dt;
-            this.cam.position.z -= 10 * dt;
-            this.cam.lookAt(this.plr.p);
-            
-        } else if (this.state === STATE.MENU) {
-            let t = Date.now() * 0.0005;
-            this.cam.position.set(Math.sin(t)*30, 20, Math.cos(t)*30);
-            this.cam.lookAt(0,0,-100);
-        } else if (this.state === STATE.CALIB) {
-            // Update Calibration bubble
-            if(INP.hasSensors) {
-                let dot = document.getElementById('cal-dot');
-                let ang = INP.tilt.raw;
-                // Map -45 to 45 deg to -40 to 40 px
-                let px = Math.max(-40, Math.min(40, (ang / CFG.TILT_MAX_ANG) * 40));
-                dot.style.transform = `translate(calc(-50% + ${px}px), -50%)`;
-            }
-        }
-        
-        this.ren.render(this.sc, this.cam);
+        });
     }
-}
 
-// ==========================================
-// UI HELPER
-// ==========================================
-const UI = {
-    setState: function(id) {
+    generateStars(count) {
+        let stars = [];
+        for(let i=0; i<count; i++) {
+            stars.push({
+                x: Math.random() * this.width,
+                y: Math.random() * this.height,
+                size: Math.random() * 2,
+                alpha: Math.random()
+            });
+        }
+        return stars;
+    }
+
+    changeState(newState) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        if(id) document.getElementById(id).classList.add('active');
-        document.getElementById('hud').style.display = (id === null) ? 'block' : 'none';
-    },
-    startCalib: function() {
-        document.getElementById('settings-modal').style.display = 'none';
-        document.getElementById('tilt-calibrate').style.display = 'flex';
-        if(GAME) GAME.state = STATE.CALIB;
-    },
-    endCalib: function() {
-        document.getElementById('tilt-calibrate').style.display = 'none';
-        document.getElementById('settings-modal').style.display = 'flex';
-        if(GAME) GAME.state = STATE.MENU;
+        document.getElementById('hud').style.display = 'none';
+
+        this.state = newState;
+
+        switch(newState) {
+            case 'MENU':
+                document.getElementById('menu-screen').classList.add('active');
+                break;
+            case 'SELECT':
+                document.getElementById('select-screen').classList.add('active');
+                break;
+            case 'FLIGHT':
+                document.getElementById('hud').style.display = 'flex';
+                this.ship.reset();
+                break;
+            case 'END':
+                document.getElementById('end-screen').classList.add('active');
+                this.updateEndScreen();
+                break;
+        }
     }
-};
 
-// ==========================================
-// BOOTSTRAP
-// ==========================================
-let GAME = null;
+    selectPlanet(name) {
+        this.targetPlanet = { name: name, ...PLANET_DATA[name] };
+        this.changeState('FLIGHT');
+    }
+
+    updateEndScreen() {
+        const title = document.getElementById('end-title');
+        const stats = document.getElementById('end-stats');
+        
+        let impactVelocity = Math.abs(this.ship.velocity);
+        
+        if (impactVelocity <= this.targetPlanet.safeVelocity) {
+            title.innerText = "SUCCESSFUL LANDING";
+            title.style.color = "#0f0";
+            stats.innerText = `Touchdown speed: ${impactVelocity.toFixed(1)} m/s.\nThe Seahawk-1 has landed safely on ${this.targetPlanet.name}.`;
+        } else {
+            title.innerText = "CATASTROPHIC CRASH";
+            title.style.color = "#f00";
+            stats.innerText = `Impact speed: ${impactVelocity.toFixed(1)} m/s.\nMax safe speed was ${this.targetPlanet.safeVelocity} m/s.\nThe vessel was destroyed on ${this.targetPlanet.name}.`;
+        }
+    }
+
+    updateHUD() {
+        const alt = document.getElementById('hud-alt');
+        const vel = document.getElementById('hud-vel');
+        const fuel = document.getElementById('hud-fuel');
+        const thrust = document.getElementById('hud-thrust');
+        const grav = document.getElementById('hud-grav');
+
+        alt.innerText = `ALTITUDE: ${Math.max(0, Math.floor(this.ship.altitude))} m`;
+        vel.innerText = `VELOCITY: ${this.ship.velocity.toFixed(2)} m/s`;
+        fuel.innerText = `FUEL: ${Math.floor((this.ship.fuel / this.ship.maxFuel) * 100)}%`;
+        grav.innerText = `GRAVITY: ${this.targetPlanet.gravity} m/s²`;
+        
+        if (this.ship.isThrusting && this.ship.fuel > 0) {
+            thrust.innerText = `THRUST: ACTIVE`;
+            thrust.style.color = '#0ff';
+        } else {
+            thrust.innerText = `THRUST: INACTIVE`;
+            thrust.style.color = '#0f0';
+        }
+
+        // Warnings
+        if (Math.abs(this.ship.velocity) > this.targetPlanet.safeVelocity && this.ship.altitude < 1000) {
+            vel.classList.add('hud-warning');
+        } else {
+            vel.classList.remove('hud-warning');
+        }
+    }
+
+    drawEnvironment() {
+        this.ctx.clearRect(0, 0, this.width, this.height);
+        
+        // Stars
+        this.ctx.fillStyle = '#fff';
+        this.stars.forEach(star => {
+            this.ctx.globalAlpha = star.alpha;
+            this.ctx.fillRect(star.x, star.y, star.size, star.size);
+        });
+        this.ctx.globalAlpha = 1.0;
+
+        if (this.state === 'FLIGHT' && this.targetPlanet) {
+            // Planet Surface
+            let surfaceY = this.height - (this.height * 0.1); // Bottom 10% is surface
+            
+            // Curve calculation based on altitude
+            let curveStrength = Math.max(0, this.ship.altitude / 10000);
+            
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, surfaceY + (curveStrength * 200));
+            this.ctx.quadraticCurveTo(this.width/2, surfaceY - (curveStrength * 500), this.width, surfaceY + (curveStrength * 200));
+            this.ctx.lineTo(this.width, this.height);
+            this.ctx.lineTo(0, this.height);
+            this.ctx.closePath();
+            
+            this.ctx.fillStyle = this.targetPlanet.color;
+            this.ctx.fill();
+            
+            // Atmosphere gradient
+            if (this.targetPlanet.atmDensity > 0) {
+                let grad = this.ctx.createLinearGradient(0, 0, 0, surfaceY);
+                let atmColor = this.targetPlanet.color;
+                grad.addColorStop(1, `${atmColor}40`); // 25% opacity
+                grad.addColorStop(0, '#00000000');
+                this.ctx.fillStyle = grad;
+                this.ctx.fillRect(0, 0, this.width, surfaceY);
+            }
+
+            // Ship rendering
+            this.ship.draw(this.ctx, this.width, surfaceY, this.targetPlanet.safeVelocity);
+        }
+    }
+
+    loop(timestamp) {
+        let dt = (timestamp - this.lastTime) / 1000;
+        this.lastTime = timestamp;
+
+        if (dt > 0.1) dt = 0.1; // Cap delta to prevent physics explosion on lag
+
+        if (this.state === 'FLIGHT') {
+            this.ship.update(dt, this.targetPlanet);
+            this.updateHUD();
+            
+            if (this.ship.altitude <= 0) {
+                this.ship.altitude = 0;
+                this.changeState('END');
+            }
+        }
+
+        this.drawEnvironment();
+        requestAnimationFrame((t) => this.loop(t));
+    }
+}
+
+// --- PHYSICS ENTITY ---
+class Ship {
+    constructor() {
+        this.maxFuel = 5000;
+        this.enginePower = 30.0; 
+        this.reset();
+    }
+
+    reset() {
+        this.altitude = 15000; // Starting altitude (meters)
+        this.velocity = -50;    // Initial descent velocity
+        this.fuel = this.maxFuel;
+        this.isThrusting = false;
+        this.mass = 2000;
+    }
+
+    update(dt, planet) {
+        // Apply Physics
+        let gravityForce = planet.gravity;
+        
+        // Simple Drag = 1/2 * p * v^2 * Cd * A
+        // Simplified for gameplay based on atm density
+        let dragForce = 0;
+        if (planet.atmDensity > 0) {
+            let speedSq = this.velocity * this.velocity;
+            let direction = this.velocity > 0 ? -1 : 1;
+            dragForce = direction * (0.0001 * planet.atmDensity * speedSq);
+        }
+
+        let acceleration = -gravityForce + dragForce;
+
+        if (this.isThrusting && this.fuel > 0) {
+            acceleration += this.enginePower;
+            this.fuel -= 250 * dt; // Fuel burn rate
+            if (this.fuel < 0) this.fuel = 0;
+        }
+
+        this.velocity += acceleration * dt;
+        this.altitude += this.velocity * dt;
+    }
+
+    draw(ctx, screenWidth, surfaceY, safeSpeed) {
+        // Map altitude to screen Y
+        // 15000m top, 0m surfaceY
+        let renderY = surfaceY - (this.altitude / 15000) * (surfaceY - 50);
+        let renderX = screenWidth / 2;
+
+        ctx.save();
+        ctx.translate(renderX, renderY);
+
+        // Draw Ship Body
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.moveTo(0, -15);
+        ctx.lineTo(10, 10);
+        ctx.lineTo(-10, 10);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Draw Legs
+        ctx.strokeStyle = '#aaa';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(10, 10); ctx.lineTo(15, 20);
+        ctx.moveTo(-10, 10); ctx.lineTo(-15, 20);
+        ctx.stroke();
+
+        // Draw Thrust Flame
+        if (this.isThrusting && this.fuel > 0) {
+            ctx.fillStyle = '#0ff';
+            ctx.beginPath();
+            ctx.moveTo(-5, 10);
+            ctx.lineTo(5, 10);
+            ctx.lineTo(0, 10 + Math.random() * 20 + 10); // Flickering flame
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Velocity Vector Line
+        if (Math.abs(this.velocity) > safeSpeed) {
+            ctx.strokeStyle = '#f00';
+        } else {
+            ctx.strokeStyle = '#0f0';
+        }
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, -this.velocity * 0.5); // Visual multiplier
+        ctx.stroke();
+
+        ctx.restore();
+    }
+}
+
+// Initialize the game
 window.onload = () => {
-    // Add interaction listener to unlock AudioContext
-    document.body.addEventListener('click', () => AU.init(), {once:true});
-    document.body.addEventListener('touchstart', () => AU.init(), {once:true});
-    GAME = new Engine();
+    const game = new Game();
 };
-
 </script>
 </body>
 </html>
