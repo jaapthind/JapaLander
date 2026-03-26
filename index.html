@@ -3,8 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>JAAP SPACE v17.0.0-EXTENDED-STABLE</title>
+<title>JAAP SPACE v18.0.0-ULTRA-EXTENDED</title>
 <style>
+/* ==========================================================================
+   JAAP SPACE SIMULATION ENGINE - CORE STYLESHEET
+   ========================================================================== */
 :root {
   --c-primary: #00aaff;
   --c-secondary: #002244;
@@ -22,11 +25,13 @@
   --glow-warn: 0 0 22px rgba(255,170,0,0.9);
   --scanline: rgba(255, 255, 255, 0.03);
 }
+
 * { box-sizing:border-box; user-select:none; -webkit-user-drag:none; touch-action: none; }
 body, html { margin:0; padding:0; width:100%; height:100%; background:#000; color:var(--c-primary); font-family:var(--font); overflow:hidden; overscroll-behavior: none; }
 #engine { position:relative; width:100vw; height:100vh; overflow:hidden; background:#000;}
 canvas { position:absolute; top:0; left:0; width:100%; height:100%; display:block; }
 
+/* CANVAS LAYERING SYSTEM */
 #c-deep { z-index:1; }
 #c-stars { z-index:2; }
 #c-nebula { z-index:3; mix-blend-mode:screen; }
@@ -42,15 +47,16 @@ canvas { position:absolute; top:0; left:0; width:100%; height:100%; display:bloc
 #c-traj { z-index:12; opacity: 0.6; pointer-events: none;}
 #c-ui { z-index:13; pointer-events:none; }
 
+/* POST-PROCESSING EFFECTS */
 .vignette { position:absolute; top:0; left:0; width:100%; height:100%; z-index:90; background:radial-gradient(circle,transparent 50%,rgba(0,0,0,0.95) 130%); pointer-events:none; }
 .scanlines { position:absolute; top:0; left:0; width:100%; height:100%; z-index:91; background:linear-gradient(to bottom, var(--scanline) 50%, transparent 50%); background-size: 100% 4px; pointer-events:none; opacity: 0.5;}
 .lensflare { position:absolute; top:50%; left:50%; width:300vw; height:4px; background:rgba(0,170,255,0.12); transform:translate(-50%,-50%) rotate(-18deg); filter:blur(8px); pointer-events:none; z-index:93; opacity:0; transition:opacity 0.15s; box-shadow:0 0 60px rgba(0,170,255,0.5); }
 
-/* SCREENS */
+/* SCREEN MANAGEMENT */
 .screen { position:absolute; top:0; left:0; width:100%; height:100%; display:none; flex-direction:column; justify-content:center; align-items:center; z-index:100; background:rgba(0,3,8,0.97); }
 .screen.active { display:flex; }
 
-/* INTRO */
+/* INTRO SEQUENCE STYLING */
 #intro-screen { background:#000; overflow:hidden; }
 #intro-planet-canvas { width:100%; height:100%; position:absolute; top:0; left:0; }
 #intro-overlay { position:absolute; top:0; left:0; width:100%; height:100%; z-index:2; background:rgba(0,0,0,0.65); }
@@ -64,7 +70,7 @@ canvas { position:absolute; top:0; left:0; width:100%; height:100%; display:bloc
 #intro-loader-fill { height:100%; width:0; background:linear-gradient(90deg,var(--c-secondary),var(--c-primary), #ffffff); transition:width 0.04s linear; box-shadow:0 0 25px var(--c-primary); }
 #intro-loader-text { text-align:center; margin-top:8px; font-size:clamp(0.7rem, 1.5vw, 1rem); color:var(--c-tertiary); letter-spacing:4px; font-weight: bold;}
 
-/* MENU */
+/* MENU AND CAROUSEL STYLING */
 #menu-screen { background:rgba(0,3,8,0.98); padding: 5vh 0; }
 .menu-header { z-index:10; text-align:center; margin-bottom:2vh; padding: 0 10px; }
 .menu-header h1 { font-size:clamp(1.5rem,4vw,5rem); color:#fff; letter-spacing:clamp(4px,1vw,28px); text-shadow:var(--glow); margin:0; }
@@ -86,7 +92,7 @@ canvas { position:absolute; top:0; left:0; width:100%; height:100%; display:bloc
 .btn { background:rgba(0,30,60,0.9); border:2px solid var(--c-primary); color:var(--c-primary); padding:15px 20px; font-family:var(--font); font-size:clamp(1rem, 1.5vw, 1.5rem); font-weight:bold; text-transform:uppercase; letter-spacing:3px; cursor:pointer; position:relative; overflow:hidden; transition:all 0.3s; border-radius: 8px; width: 100%; }
 .btn:hover { background:var(--c-primary); color:#000; box-shadow:0 0 45px var(--c-primary); transform:scale(1.03); }
 
-/* HUD RESPONSIVE */
+/* HUD RESPONSIVE LAYOUT */
 #hud-layer { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none; z-index:55; }
 .hud-panel { position:absolute; background:var(--c-hud-bg); border:1px solid var(--c-hud-border); padding:clamp(10px, 1.5vw, 22px); border-radius: 12px; backdrop-filter:blur(12px); box-shadow:0 8px 30px rgba(0,0,0,0.95),inset 0 0 20px rgba(0,170,255,0.1); display: flex; flex-direction: column; }
 .hud-ph { font-size:clamp(0.8rem, 1.2vw, 1.2rem); font-weight:900; color:#fff; margin-bottom:10px; border-bottom:2px solid var(--c-primary); padding-bottom:5px; text-transform:uppercase; letter-spacing:2px; }
@@ -187,7 +193,7 @@ canvas { position:absolute; top:0; left:0; width:100%; height:100%; display:bloc
     <div id="intro-center">
       <div id="intro-title-wrap">
         <div id="intro-title-main">JAAP SPACE</div>
-        <div id="intro-subtitle">AEROSPACE SIMULATION ENGINE v17.0 EXTENDED</div>
+        <div id="intro-subtitle">AEROSPACE SIMULATION ENGINE v18.0</div>
       </div>
     </div>
     <div id="intro-loader-wrap">
@@ -246,7 +252,7 @@ canvas { position:absolute; top:0; left:0; width:100%; height:100%; display:bloc
     </div>
     
     <div class="hud-panel" id="pnl-vessel">
-      <div class="hud-ph">VESSEL: SEAHAWK-1 HEAVY INTERPLANETARY</div>
+      <div class="hud-ph">VESSEL: JAAP-1 HEAVY INTERPLANETARY</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:clamp(12px, 2.5vw, 30px)">
         <div>
           <div class="dr" style="border:none;margin:0"><span class="dl">LFO FUEL</span><span class="dv" id="ui-fuel">100%</span></div>
@@ -313,6 +319,10 @@ canvas { position:absolute; top:0; left:0; width:100%; height:100%; display:bloc
 
 <script>
 "use strict";
+
+/* ==========================================================================
+   CONSTANTS & UTILITIES
+   ========================================================================== */
 const PI=Math.PI,TAU=PI*2,D2R=PI/180,R2D=180/PI;
 const G_CONST=6.6743e-11,R_GAS=8.314462618,STEFAN=5.670374419e-8;
 const MAX_DT=0.1,LOD_ALT=500000,SURF_SPAN=1000000;
@@ -337,6 +347,9 @@ const M={
   rng:(a,b)=>Math.random()*(b-a)+a
 };
 
+/* ==========================================================================
+   AUDIO SYNTHESIS ENGINE
+   ========================================================================== */
 class SynthEngine {
   constructor() {
     this.ctx = null;
@@ -463,6 +476,9 @@ class SynthEngine {
   }
 }
 
+/* ==========================================================================
+   PROCEDURAL GENERATION (SIMPLEX NOISE)
+   ========================================================================== */
 class SimplexNoise{
   constructor(seed=1234){
     this.p=new Uint8Array(256);
@@ -511,7 +527,36 @@ class SimplexNoise{
   }
 }
 
+/* ==========================================================================
+   PLANETARY DATA CATALOG
+   ========================================================================== */
 const PLANETS = {
+  "Mercury":{
+    radius:2439700,mass:3.301e23,g:3.7,
+    atmoP:0,scaleH:0,surfT:440,
+    colorOcean:null,colorLand1:'#888888',colorLand2:'#666666',colorLand3:'#444444',colorAtmo:'transparent',colorAtmoGlow:'transparent',
+    cloudColor:null,cloudDensity:0,
+    terrainRough:0.95,craterDensity:0.9,hasClouds:false,hasRings:false,
+    safeV:15,classification:"Terrestrial Planet",
+    hazards:["HARD VACUUM","EXTREME HEAT", "SUN PROXIMITY"],
+    hazardColors:["#00ffff","#ff3300", "#ffff00"],
+    description:"Scorched inner planet. Heavy cratering and extreme day-night temperature swings.",
+    ambientLight:'rgba(255,200,150,0.1)',
+    weatherType: 'none'
+  },
+  "Venus":{
+    radius:6051800,mass:4.867e24,g:8.87,
+    atmoP:9300000,scaleH:15900,surfT:737,
+    colorOcean:null,colorLand1:'#9a7a35',colorLand2:'#7a5e28',colorLand3:'#5a4018',colorAtmo:'#e8b840',colorAtmoGlow:'#c89030',
+    cloudColor:'rgba(240,210,120,0.85)',cloudDensity:0.95,
+    terrainRough:0.32,craterDensity:0.12,hasClouds:true,hasRings:false,
+    safeV:5,classification:"Extreme Terrestrial",
+    hazards:["CRUSHING PRESSURE","LEAD-MELT TEMP", "ACID RAIN"],
+    hazardColors:["#ff0000","#ff3300", "#aaff00"],
+    description:"Supercritical CO₂ atmosphere. Extreme heat and pressure. Sulfuric acid clouds.",
+    ambientLight:'rgba(255,180,40,0.3)',
+    weatherType: 'acid'
+  },
   "Earth":{
     radius:6371000,mass:5.972e24,g:9.807,
     atmoP:101325,scaleH:8500,surfT:288,
@@ -521,35 +566,9 @@ const PLANETS = {
     safeV:10,classification:"Terrestrial Planet",
     hazards:["THERMAL REENTRY","HIGH DRAG"],
     hazardColors:["#ff5500","#ffaa00"],
-    description:"Dense N₂-O₂ atmosphere. Standard gravity well.",
+    description:"Dense N₂-O₂ atmosphere. Standard gravity well. Abundant liquid water.",
     ambientLight:'rgba(100,160,255,0.15)',
     weatherType: 'rain'
-  },
-  "Mars":{
-    radius:3389500,mass:6.417e23,g:3.721,
-    atmoP:610,scaleH:11100,surfT:210,
-    colorOcean:null,colorLand1:'#c0430c',colorLand2:'#992e08',colorLand3:'#7a2506',colorAtmo:'#e89d7b',colorAtmoGlow:'#d4774a',
-    cloudColor:'rgba(210,180,150,0.4)',cloudDensity:0.2,
-    terrainRough:0.88,craterDensity:0.65,hasClouds:true,hasRings:false,
-    safeV:12,classification:"Terrestrial Planet",
-    hazards:["THIN ATMOSPHERE","HIGH CRATERS"],
-    hazardColors:["#ff8800","#ff4400"],
-    description:"Thin CO₂ atmosphere. Propulsive terminal descent mandatory.",
-    ambientLight:'rgba(200,120,80,0.2)',
-    weatherType: 'dust'
-  },
-  "Venus":{
-    radius:6051800,mass:4.867e24,g:8.87,
-    atmoP:9300000,scaleH:15900,surfT:737,
-    colorOcean:null,colorLand1:'#9a7a35',colorLand2:'#7a5e28',colorLand3:'#5a4018',colorAtmo:'#e8b840',colorAtmoGlow:'#c89030',
-    cloudColor:'rgba(240,210,120,0.85)',cloudDensity:0.95,
-    terrainRough:0.32,craterDensity:0.12,hasClouds:true,hasRings:false,
-    safeV:5,classification:"Extreme Terrestrial",
-    hazards:["CRUSHING PRESSURE","LEAD-MELT TEMP"],
-    hazardColors:["#ff0000","#ff3300"],
-    description:"Supercritical CO₂ atmosphere. Extreme heat and pressure.",
-    ambientLight:'rgba(255,180,40,0.3)',
-    weatherType: 'acid'
   },
   "Luna":{
     radius:1737400,mass:7.342e22,g:1.62,
@@ -560,22 +579,35 @@ const PLANETS = {
     safeV:15,classification:"Natural Satellite",
     hazards:["HARD VACUUM","EXTREME CRATERS"],
     hazardColors:["#00ffff","#ff4400"],
-    description:"Complete vacuum. 100% propulsion-dependent descent.",
+    description:"Earth's Moon. Complete vacuum. 100% propulsion-dependent descent.",
     ambientLight:'rgba(200,200,220,0.1)',
     weatherType: 'none'
   },
-  "Titan":{
-    radius:2574700,mass:1.345e23,g:1.352,
-    atmoP:146700,scaleH:40000,surfT:94,
-    colorOcean:'#3a2a10',colorLand1:'#5a3c20',colorLand2:'#3d2810',colorLand3:'#251808',colorAtmo:'#e0a030',colorAtmoGlow:'#c88020',
-    cloudColor:'rgba(200,150,60,0.65)',cloudDensity:0.8,
-    terrainRough:0.22,craterDensity:0.04,hasClouds:true,hasRings:false,
-    safeV:20,classification:"Hydrocarbon Satellite",
-    hazards:["THICK SMOG","EXTREME COLD"],
-    hazardColors:["#cc6600","#00aaff"],
-    description:"Thick nitrogen/methane atmosphere. Low gravity.",
-    ambientLight:'rgba(200,140,50,0.25)',
-    weatherType: 'snow'
+  "Mars":{
+    radius:3389500,mass:6.417e23,g:3.721,
+    atmoP:610,scaleH:11100,surfT:210,
+    colorOcean:null,colorLand1:'#c0430c',colorLand2:'#992e08',colorLand3:'#7a2506',colorAtmo:'#e89d7b',colorAtmoGlow:'#d4774a',
+    cloudColor:'rgba(210,180,150,0.4)',cloudDensity:0.2,
+    terrainRough:0.88,craterDensity:0.65,hasClouds:true,hasRings:false,
+    safeV:12,classification:"Terrestrial Planet",
+    hazards:["THIN ATMOSPHERE","DUST STORMS"],
+    hazardColors:["#ff8800","#ffbb00"],
+    description:"Thin CO₂ atmosphere. Propulsive terminal descent mandatory.",
+    ambientLight:'rgba(200,120,80,0.2)',
+    weatherType: 'dust'
+  },
+  "Phobos":{
+    radius:11266,mass:1.065e16,g:0.0057,
+    atmoP:0,scaleH:0,surfT:233,
+    colorOcean:null,colorLand1:'#554433',colorLand2:'#443322',colorLand3:'#332211',colorAtmo:'transparent',colorAtmoGlow:'transparent',
+    cloudColor:null,cloudDensity:0,
+    terrainRough:0.9,craterDensity:1.2,hasClouds:false,hasRings:false,
+    safeV:25,classification:"Captured Asteroid",
+    hazards:["MICROGRAVITY","IRREGULAR TERRAIN"],
+    hazardColors:["#00ffff","#aa5500"],
+    description:"Martian moon. Extremely low gravity requires active thrust to remain on surface.",
+    ambientLight:'rgba(150,120,100,0.1)',
+    weatherType: 'none'
   },
   "Jupiter":{
     radius:69911000,mass:1.898e27,g:24.79,
@@ -590,6 +622,32 @@ const PLANETS = {
     ambientLight:'rgba(200,160,120,0.2)',
     weatherType: 'dust'
   },
+  "Io":{
+    radius:1821000,mass:8.931e22,g:1.796,
+    atmoP:0,scaleH:0,surfT:130,
+    colorOcean:null,colorLand1:'#eebb00',colorLand2:'#ccaa00',colorLand3:'#aa8800',colorAtmo:'transparent',colorAtmoGlow:'transparent',
+    cloudColor:null,cloudDensity:0,
+    terrainRough:0.6,craterDensity:0.05,hasClouds:false,hasRings:false,
+    safeV:14,classification:"Volcanic Moon",
+    hazards:["ACTIVE VOLCANISM","RADIATION", "SULFUR SNOW"],
+    hazardColors:["#ff5500","#00ff00", "#aaaa00"],
+    description:"The most geologically active object in the solar system. Extreme radiation environment.",
+    ambientLight:'rgba(200,200,50,0.1)',
+    weatherType: 'none'
+  },
+  "Europa":{
+    radius:1560000,mass:4.799e22,g:1.314,
+    atmoP:0,scaleH:0,surfT:102,
+    colorOcean:null,colorLand1:'#eeeeee',colorLand2:'#ddddcc',colorLand3:'#ccbb99',colorAtmo:'transparent',colorAtmoGlow:'transparent',
+    cloudColor:null,cloudDensity:0,
+    terrainRough:0.2,craterDensity:0.02,hasClouds:false,hasRings:false,
+    safeV:16,classification:"Ice Moon",
+    hazards:["RADIATION","CRYOGENIC TEMP", "FRACTURED ICE"],
+    hazardColors:["#00ff00","#00ffff", "#aaaaff"],
+    description:"A smooth icy crust covering a global subsurface ocean. Low cratering due to ice tectonics.",
+    ambientLight:'rgba(180,220,255,0.1)',
+    weatherType: 'none'
+  },
   "Saturn":{
     radius:58232000,mass:5.683e26,g:10.44,
     atmoP:100000000,scaleH:59500,surfT:134,
@@ -602,6 +660,45 @@ const PLANETS = {
     description:"Spectacular ring system. Low density but deep gravity well.",
     ambientLight:'rgba(220,200,180,0.2)',
     weatherType: 'snow'
+  },
+  "Titan":{
+    radius:2574700,mass:1.345e23,g:1.352,
+    atmoP:146700,scaleH:40000,surfT:94,
+    colorOcean:'#3a2a10',colorLand1:'#5a3c20',colorLand2:'#3d2810',colorLand3:'#251808',colorAtmo:'#e0a030',colorAtmoGlow:'#c88020',
+    cloudColor:'rgba(200,150,60,0.65)',cloudDensity:0.8,
+    terrainRough:0.22,craterDensity:0.04,hasClouds:true,hasRings:false,
+    safeV:20,classification:"Hydrocarbon Satellite",
+    hazards:["THICK SMOG","EXTREME COLD", "METHANE LAKES"],
+    hazardColors:["#cc6600","#00aaff", "#004488"],
+    description:"Thick nitrogen/methane atmosphere. Low gravity. Liquid hydrocarbon lakes.",
+    ambientLight:'rgba(200,140,50,0.25)',
+    weatherType: 'snow'
+  },
+  "Enceladus":{
+    radius:252100,mass:1.08e20,g:0.113,
+    atmoP:0,scaleH:0,surfT:75,
+    colorOcean:null,colorLand1:'#ffffff',colorLand2:'#eeeeff',colorLand3:'#ddddff',colorAtmo:'transparent',colorAtmoGlow:'transparent',
+    cloudColor:null,cloudDensity:0,
+    terrainRough:0.3,craterDensity:0.1,hasClouds:false,hasRings:false,
+    safeV:22,classification:"Ice Moon",
+    hazards:["CRYOPLUMES","LOW GRAVITY"],
+    hazardColors:["#00ffff","#aaaaaa"],
+    description:"Brightest object in the solar system. Geysers eject water ice into space.",
+    ambientLight:'rgba(200,220,255,0.1)',
+    weatherType: 'none'
+  },
+  "Uranus":{
+    radius:25362000,mass:8.681e25,g:8.69,
+    atmoP:100000000,scaleH:27700,surfT:76,
+    colorOcean:null,colorLand1:'#a2d2df',colorLand2:'#7bbbc9',colorLand3:'#498a98',colorAtmo:'#a2d2df',colorAtmoGlow:'#7bbbc9',
+    cloudColor:'rgba(200,230,240,0.6)',cloudDensity:0.7,
+    terrainRough:0.1,craterDensity:0.0,hasClouds:true,hasRings:true,
+    safeV:2,classification:"Ice Giant",
+    hazards:["EXTREME COLD","NO SOLID SURFACE", "AXIAL TILT"],
+    hazardColors:["#00ffff","#ff00ff", "#aaaaaa"],
+    description:"Featureless cyan atmosphere. Rotates on its side.",
+    ambientLight:'rgba(160,200,220,0.2)',
+    weatherType: 'rain'
   },
   "Neptune":{
     radius:24622000,mass:1.024e26,g:11.15,
@@ -641,6 +738,32 @@ const PLANETS = {
     description:"Tidally locked exoplanet. Alien flora and dense atmosphere.",
     ambientLight:'rgba(150,80,180,0.2)',
     weatherType: 'acid'
+  },
+  "Kepler-22b":{
+    radius:15290000,mass:2.1e25,g:6.0,
+    atmoP:500000,scaleH:12000,surfT:295,
+    colorOcean:'#0088ff',colorLand1:'#00aaff',colorLand2:'#0077dd',colorLand3:'#0055bb',colorAtmo:'#aaddff',colorAtmoGlow:'#88ccff',
+    cloudColor:'rgba(255,255,255,0.8)',cloudDensity:0.8,
+    terrainRough:0.1,craterDensity:0.0,hasClouds:true,hasRings:false,
+    safeV:10,classification:"Ocean World",
+    hazards:["GLOBAL OCEAN","HIGH PRESSURE", "HURRICANES"],
+    hazardColors:["#0055ff","#ff5500", "#00ffff"],
+    description:"Completely covered by a global ocean. Requires floating landing platform.",
+    ambientLight:'rgba(150,200,255,0.2)',
+    weatherType: 'rain'
+  },
+  "Proxima b":{
+    radius:7160000,mass:6.38e24,g:8.2,
+    atmoP:50000,scaleH:9000,surfT:234,
+    colorOcean:null,colorLand1:'#774433',colorLand2:'#552211',colorLand3:'#331100',colorAtmo:'#dd8866',colorAtmoGlow:'#bb6644',
+    cloudColor:'rgba(200,150,120,0.5)',cloudDensity:0.4,
+    terrainRough:0.75,craterDensity:0.3,hasClouds:true,hasRings:false,
+    safeV:12,classification:"Red Dwarf Exoplanet",
+    hazards:["STELLAR FLARES","RADIATION", "HARSH WINDS"],
+    hazardColors:["#ff0000","#00ff00", "#ff8800"],
+    description:"Closest exoplanet to Earth. Bathed in intense radiation from its host star.",
+    ambientLight:'rgba(255,100,50,0.15)',
+    weatherType: 'dust'
   }
 };
 
@@ -654,6 +777,9 @@ const DEFAULT_PD = {
   hazards:[],hazardColors:[],description:"",ambientLight:'rgba(100,160,255,0.15)',weatherType:'none'
 };
 
+/* ==========================================================================
+   PARTICLE AND WEATHER SYSTEMS
+   ========================================================================== */
 class ParticleSystem{
   constructor(){
     this.maxP=18000;this.idx=0;
@@ -761,6 +887,9 @@ class WeatherSystem {
   }
 }
 
+/* ==========================================================================
+   PLANET RENDERING SYSTEM (SURFACE AND ORBITAL)
+   ========================================================================== */
 class PlanetRenderer{
   constructor(pd,ctxT,ctxP,ctxA,ctxC,sw,sh){
     this.pd=pd || DEFAULT_PD;
@@ -935,7 +1064,6 @@ class PlanetRenderer{
       ctx.restore();
     }
 
-    // Draw the tiny blue dot for landing at the top pole (x=0 corresponds to top in our simple model)
     if(cr>40 && this.pd.classification !== "Gas Giant" && this.pd.classification !== "Ice Giant"){
       ctx.fillStyle = '#0044ff';
       ctx.shadowColor = '#00aaff';
@@ -986,7 +1114,7 @@ class PlanetRenderer{
       [this.pd.colorLand1,'#0a0a0a'],
       [this.pd.colorLand2,'#0a0a0a'],
       [this.pd.colorLand3,'#0a0a0a'],
-      ['#111111','#00aaff'] // pad color
+      ['#111111','#00aaff'] 
     ];
 
     for(let bid=0;bid<4;bid++){
@@ -1009,7 +1137,6 @@ class PlanetRenderer{
       if(drawing){ctx.lineTo(lastX,50000);ctx.lineTo(startX,50000);ctx.closePath();ctx.fill();ctx.stroke()}
     }
 
-    // Landing pad visuals at exact center x=0
     if(this.pd.classification !== "Gas Giant" && this.pd.classification !== "Ice Giant") {
       let px=-SURF_SPAN/2+(this.padIdx/this.RES)*SURF_SPAN;
       let py=-this.heights[this.padIdx];
@@ -1081,14 +1208,19 @@ class PlanetRenderer{
   }
 }
 
+/* ==========================================================================
+   VESSEL FLIGHT DYNAMICS MODEL
+   ========================================================================== */
 class Vessel{
   constructor(){this.reset(DEFAULT_PD)}
   reset(pd = null){
     let safePd = pd || DEFAULT_PD;
-    let startRadius = safePd.radius * 2; 
+    // Lowered start radius so planet approaches very quickly visually
+    let startRadius = 200000; 
     
     this.pos=new V3(0, -safePd.radius - startRadius, 0); 
-    this.vel=new V3(0, 600, 0); 
+    // Increased approach velocity to bring planet closer faster
+    this.vel=new V3(0, 1500, 0); 
     this.acc=new V3(0,0,0);
     this.pitch= 0; 
     
@@ -1152,11 +1284,20 @@ class Vessel{
       let td=new V3(Math.sin(this.pitch),-Math.cos(this.pitch),0);
       this.acc.add(td.mul(this.thrust/m));
       this.massLFO-=this.burnMain*dt;
+    } else if (!this.ctrl.main && this.massLFO < this.massLFO_max) {
+      // Regain fuel quickly when engine is off
+      this.massLFO += 25000 * dt; 
+      if(this.massLFO > this.massLFO_max) this.massLFO = this.massLFO_max;
     }
     
     if(this.ctrl.pDown && this.massMono>0){angAcc+=10.5; this.massMono-=10*dt;}
     if(this.ctrl.pUp && this.massMono>0){angAcc-=10.5; this.massMono-=10*dt;}
     
+    if (!this.ctrl.pDown && !this.ctrl.pUp && this.massMono < this.massMono_max) {
+       this.massMono += 500 * dt;
+       if(this.massMono > this.massMono_max) this.massMono = this.massMono_max;
+    }
+
     if(this.massLFO<0)this.massLFO=0;
     if(this.massMono<0)this.massMono=0;
     
@@ -1219,7 +1360,6 @@ class Vessel{
     ctx.beginPath();ctx.moveTo(-18,28);ctx.lineTo(-42,58);ctx.lineTo(-30,62);ctx.stroke();
     ctx.beginPath();ctx.moveTo(18,28);ctx.lineTo(42,58);ctx.lineTo(30,62);ctx.stroke();
     
-    // RCS Thrusters visual
     if(this.ctrl.pDown && this.massMono>0){
       ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(18,-10);ctx.lineTo(35,-5);ctx.lineTo(18,0);ctx.fill();
       ctx.beginPath();ctx.moveTo(-18,40);ctx.lineTo(-35,45);ctx.lineTo(-18,50);ctx.fill();
@@ -1233,6 +1373,9 @@ class Vessel{
   }
 }
 
+/* ==========================================================================
+   MAIN GAME DIRECTOR AND LOOP
+   ========================================================================== */
 class Director{
   constructor(){
     this.C={
