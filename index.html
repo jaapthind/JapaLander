@@ -3,20 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>JAAP SPACE v15.0.0-ULTRA-RESPONSIVE</title>
+<title>JAAP SPACE v16.0.0-ULTRA-DIRECT</title>
 <style>
 :root {
-  --c-primary: #69BE28;
+  --c-primary: #00aaff; /* Changed from green to a clean blue */
   --c-secondary: #002244;
   --c-tertiary: #A5ACAF;
   --c-bg: #000105;
   --c-warn: #ffaa00;
   --c-crit: #ff2200;
   --c-info: #00ffff;
-  --c-hud-bg: rgba(0,8,16,0.85);
-  --c-hud-border: rgba(105,190,40,0.35);
+  --c-hud-bg: rgba(0,8,16,0.65);
+  --c-hud-border: rgba(0,170,255,0.35);
   --font: 'Consolas','Courier New',monospace;
-  --glow: 0 0 18px rgba(105,190,40,0.7);
+  --glow: 0 0 18px rgba(0,170,255,0.7);
   --glow-crit: 0 0 28px rgba(255,34,0,0.9);
   --glow-warn: 0 0 22px rgba(255,170,0,0.9);
 }
@@ -31,20 +31,15 @@ canvas { position:absolute; top:0; left:0; width:100%; height:100%; }
 #c-planet { z-index:4; }
 #c-atmo { z-index:5; mix-blend-mode:screen; }
 #c-clouds { z-index:6; mix-blend-mode:screen; }
-#c-traj { z-index:6; mix-blend-mode:screen; }
 #c-terrain { z-index:7; }
-#c-ship { z-index:8; }
-#c-smoke { z-index:9; }
-#c-fx { z-index:10; mix-blend-mode:screen; }
-#c-ui { z-index:11; pointer-events:none; }
+#c-weather { z-index:8; pointer-events:none; }
+#c-ship { z-index:9; }
+#c-smoke { z-index:10; }
+#c-fx { z-index:11; mix-blend-mode:screen; }
+#c-ui { z-index:12; pointer-events:none; }
 
-.vignette { position:absolute; top:0; left:0; width:100%; height:100%; z-index:90; background:radial-gradient(circle,transparent 45%,rgba(0,0,0,0.97) 140%); pointer-events:none; }
-.crt { position:absolute; top:0; left:0; width:100%; height:100%; z-index:91; background:linear-gradient(rgba(0,0,0,0) 50%,rgba(0,0,0,0.18) 50%),linear-gradient(90deg,rgba(255,0,0,0.04),rgba(0,255,0,0.015),rgba(0,0,255,0.04)); background-size:100% 2px,3px 100%; mix-blend-mode:overlay; pointer-events:none; }
-.scanline { position:absolute; top:0; left:0; width:100%; height:3px; background:rgba(105,190,40,0.06); z-index:92; pointer-events:none; animation:scanMove 8s linear infinite; }
-@keyframes scanMove { 0%{top:-3px} 100%{top:100%} }
-.flicker { position:absolute; top:0; left:0; width:100%; height:100%; z-index:89; pointer-events:none; animation:flick 0.11s infinite; }
-@keyframes flick { 0%{opacity:0.97} 50%{opacity:0.91} 100%{opacity:0.97} }
-.lensflare { position:absolute; top:50%; left:50%; width:300vw; height:4px; background:rgba(105,190,40,0.12); transform:translate(-50%,-50%) rotate(-18deg); filter:blur(8px); pointer-events:none; z-index:93; opacity:0; transition:opacity 0.15s; box-shadow:0 0 60px rgba(105,190,40,0.5); }
+.vignette { position:absolute; top:0; left:0; width:100%; height:100%; z-index:90; background:radial-gradient(circle,transparent 55%,rgba(0,0,0,0.95) 140%); pointer-events:none; }
+.lensflare { position:absolute; top:50%; left:50%; width:300vw; height:4px; background:rgba(0,170,255,0.12); transform:translate(-50%,-50%) rotate(-18deg); filter:blur(8px); pointer-events:none; z-index:93; opacity:0; transition:opacity 0.15s; box-shadow:0 0 60px rgba(0,170,255,0.5); }
 
 /* SCREENS */
 .screen { position:absolute; top:0; left:0; width:100%; height:100%; display:none; flex-direction:column; justify-content:center; align-items:center; z-index:60; background:rgba(0,3,8,0.97); }
@@ -56,79 +51,54 @@ canvas { position:absolute; top:0; left:0; width:100%; height:100%; }
 #intro-overlay { position:absolute; top:0; left:0; width:100%; height:100%; z-index:2; background:rgba(0,0,0,0.55); }
 #intro-center { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:10; text-align:center; pointer-events:none; width: 100%; }
 #intro-title-wrap { position:relative; display:inline-block; }
-#intro-title-main { font-size:clamp(3rem,10vw,14rem); font-weight:900; letter-spacing:clamp(5px,2vw,60px); color:#fff; text-shadow:0 0 60px var(--c-primary),0 0 120px var(--c-primary),0 0 200px rgba(105,190,40,0.4); opacity:0; white-space:nowrap; }
+#intro-title-main { font-size:clamp(3rem,10vw,14rem); font-weight:900; letter-spacing:clamp(5px,2vw,60px); color:#fff; text-shadow:0 0 60px var(--c-primary),0 0 120px var(--c-primary),0 0 200px rgba(0,170,255,0.4); opacity:0; white-space:nowrap; }
 #intro-subtitle { font-size:clamp(0.6rem,1vw,1.4rem); letter-spacing:clamp(2px,1vw,20px); color:var(--c-tertiary); margin-top:20px; opacity:0; }
 #intro-planet-label { position:absolute; top:50%; left:50%; transform:translate(-50%,-60%); font-size:clamp(2rem,6vw,9rem); font-weight:900; color:#fff; letter-spacing:8px; opacity:0; z-index:10; text-align:center; pointer-events:none; white-space:nowrap; text-shadow:0 0 40px #fff,0 0 80px var(--c-info); }
-#intro-boot-left, #intro-boot-right { position:absolute; bottom:8%; width:45%; font-size:clamp(0.5rem,0.8vw,0.9rem); color:var(--c-tertiary); z-index:10; line-height:1.7; display:none; }
-@media(min-width: 768px) {
-  #intro-boot-left, #intro-boot-right { display:block; }
-}
-#intro-boot-left { left:4%; }
-#intro-boot-right { right:4%; text-align:right; }
-.boot-line { opacity:0; animation:bootReveal 0.3s forwards; }
-@keyframes bootReveal { to{opacity:0.85} }
-.boot-time { color:var(--c-info); }
-.boot-ok { color:var(--c-primary); }
-.boot-warn { color:var(--c-warn); }
 #intro-loader-wrap { position:absolute; bottom:10%; left:50%; transform:translateX(-50%); width:min(700px,85vw); z-index:10; display:none; }
 #intro-loader-bar { width:100%; height:clamp(15px, 3vh, 28px); border:2px solid var(--c-primary); background:rgba(0,0,0,0.9); overflow:hidden; box-shadow:var(--glow); }
 #intro-loader-fill { height:100%; width:0; background:linear-gradient(90deg,var(--c-secondary),var(--c-primary)); transition:width 0.04s linear; box-shadow:0 0 25px var(--c-primary); }
 #intro-loader-text { text-align:center; margin-top:8px; font-size:clamp(0.7rem, 1.5vw, 1rem); color:var(--c-tertiary); letter-spacing:4px; }
-#intro-stats-panel { position:absolute; right:3%; top:50%; transform:translateY(-50%); z-index:10; opacity:0; width:min(340px,38vw); display:none; }
-@media(min-width: 1024px) { #intro-stats-panel { display:block; } }
-.istat-row { display:flex; justify-content:space-between; border-bottom:1px solid rgba(105,190,40,0.2); padding:6px 0; font-size:clamp(0.65rem,0.85vw,0.85rem); }
-.istat-lbl { color:var(--c-tertiary); letter-spacing:1px; }
-.istat-val { color:var(--c-info); font-weight:bold; }
 
 /* MENU */
 #menu-screen { background:rgba(0,3,8,0.98); padding: 5vh 0; }
-.menu-grid { position:absolute; top:0; left:0; width:100%; height:100%; background-image:linear-gradient(rgba(105,190,40,0.15) 1px,transparent 1px),linear-gradient(90deg,rgba(105,190,40,0.15) 1px,transparent 1px); background-size:70px 70px; transform:perspective(900px) rotateX(58deg) translateY(-80px) translateZ(-200px); animation:gridScroll 8s linear infinite; pointer-events:none; z-index:1; }
-@keyframes gridScroll { 0%{background-position:0 0} 100%{background-position:0 70px} }
 .menu-header { z-index:10; text-align:center; margin-bottom:2vh; padding: 0 10px; }
 .menu-header h1 { font-size:clamp(1.5rem,4vw,5rem); color:#fff; letter-spacing:clamp(4px,1vw,28px); text-shadow:var(--glow); margin:0; }
 .menu-header p { color:var(--c-tertiary); font-size:clamp(0.6rem,1vw,1.3rem); letter-spacing:clamp(2px, 0.5vw, 8px); margin-top:8px; border-bottom:2px solid var(--c-primary); padding-bottom:10px; }
 #planet-carousel { display:flex; gap:20px; overflow-x:auto; width:100vw; padding:2vh 5vw; scroll-snap-type:x mandatory; z-index:10; -webkit-overflow-scrolling: touch; }
 #planet-carousel::-webkit-scrollbar { height:8px; background:rgba(0,0,0,0.5); border:1px solid #333; }
 #planet-carousel::-webkit-scrollbar-thumb { background:var(--c-primary); }
-.planet-card { flex: 0 0 auto; width:min(90vw, 420px); height:clamp(500px, 70vh, 660px); border:2px solid #333; background:var(--c-hud-bg); scroll-snap-align:center; padding:clamp(15px, 3vw, 35px); display:flex; flex-direction:column; cursor:pointer; transition:all 0.4s cubic-bezier(0.175,0.885,0.32,1.275); position:relative; overflow:hidden; clip-path:polygon(25px 0,100% 0,100% calc(100% - 25px),calc(100% - 25px) 100%,0 100%,0 25px); }
-.planet-card::after { content:''; position:absolute; top:0; left:0; width:5px; height:100%; background:#333; transition:0.3s; }
-.planet-card:hover::after { background:var(--c-primary); box-shadow:var(--glow); }
-.planet-card:hover { border-color:var(--c-primary); transform:translateY(-10px) scale(1.02); box-shadow:0 25px 55px rgba(0,0,0,0.95),inset 0 0 35px rgba(105,190,40,0.12); z-index:20; }
+.planet-card { flex: 0 0 auto; width:min(90vw, 420px); height:clamp(500px, 70vh, 660px); border:2px solid #333; background:var(--c-hud-bg); scroll-snap-align:center; padding:clamp(15px, 3vw, 35px); display:flex; flex-direction:column; cursor:pointer; transition:all 0.4s cubic-bezier(0.175,0.885,0.32,1.275); position:relative; overflow:hidden; border-radius: 15px;}
+.planet-card:hover { border-color:var(--c-primary); transform:translateY(-10px) scale(1.02); box-shadow:0 25px 55px rgba(0,0,0,0.95),inset 0 0 35px rgba(0,170,255,0.12); z-index:20; }
 .pc-globe { position:absolute; top:-100px; right:-100px; width:300px; height:300px; border-radius:50%; opacity:0.12; transition:0.6s; filter:blur(20px); z-index:0; }
 .planet-card:hover .pc-globe { opacity:0.35; transform:scale(1.25); filter:blur(12px); }
-.pc-canvas-preview { width:clamp(80px, 15vw, 120px); height:clamp(80px, 15vw, 120px); border-radius:50%; margin:0 auto 20px; display:block; border:2px solid rgba(105,190,40,0.3); box-shadow:0 0 30px rgba(0,0,0,0.8); }
+.pc-canvas-preview { width:clamp(80px, 15vw, 120px); height:clamp(80px, 15vw, 120px); border-radius:50%; margin:0 auto 20px; display:block; border:2px solid rgba(0,170,255,0.3); box-shadow:0 0 30px rgba(0,0,0,0.8); }
 .pc-title { font-size:clamp(1.8rem, 3vw, 2.8rem); font-weight:900; margin:0 0 15px; color:#fff; letter-spacing:4px; text-transform:uppercase; z-index:2; border-bottom:2px solid #333; padding-bottom:10px; text-shadow:0 4px 12px rgba(0,0,0,0.9); text-align:center; }
 .pc-stats { display:flex; flex-direction:column; gap:8px; z-index:2; }
 .pc-stat { display:flex; justify-content:space-between; font-size:clamp(0.8rem, 1.2vw, 1.1rem); border-bottom:1px dashed rgba(255,255,255,0.1); padding-bottom:4px; }
 .pc-stat-lbl { color:var(--c-tertiary); letter-spacing:1px; }
 .pc-stat-val { color:var(--c-info); font-weight:bold; }
 .pc-desc { margin-top:auto; margin-bottom:15px; font-size:clamp(0.75rem, 1.1vw, 1rem); line-height:1.5; color:#ccc; z-index:2; font-style:italic; background:rgba(0,0,0,0.6); padding:10px; border-left:3px solid var(--c-primary); flex-grow: 1; overflow-y: auto; }
-.pc-hazards { display:flex; flex-wrap:wrap; gap:6px; z-index:2; margin-bottom:10px; }
-.hazard-tag { padding:3px 8px; font-size:clamp(0.6rem, 0.9vw, 0.75rem); font-weight:bold; letter-spacing:1px; border:1px solid; clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%); }
-.btn { background:rgba(0,30,60,0.8); border:2px solid var(--c-primary); color:var(--c-primary); padding:15px 20px; font-family:var(--font); font-size:clamp(1rem, 1.5vw, 1.5rem); font-weight:bold; text-transform:uppercase; letter-spacing:3px; cursor:pointer; position:relative; overflow:hidden; transition:all 0.3s; clip-path:polygon(18px 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%,0 18px); width: 100%; }
-.btn::before { content:''; position:absolute; top:0; left:-150%; width:150%; height:100%; background:linear-gradient(90deg,transparent,rgba(105,190,40,0.5),transparent); transition:left 0.5s; transform:skewX(-22deg); }
+.btn { background:rgba(0,30,60,0.8); border:2px solid var(--c-primary); color:var(--c-primary); padding:15px 20px; font-family:var(--font); font-size:clamp(1rem, 1.5vw, 1.5rem); font-weight:bold; text-transform:uppercase; letter-spacing:3px; cursor:pointer; position:relative; overflow:hidden; transition:all 0.3s; border-radius: 8px; width: 100%; }
 .btn:hover { background:var(--c-primary); color:#000; box-shadow:0 0 35px var(--c-primary); transform:scale(1.02); }
-.btn:hover::before { left:150%; }
 
 /* HUD RESPONSIVE */
 #hud-layer { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none; z-index:55; }
-.hud-panel { position:absolute; background:var(--c-hud-bg); border:1px solid var(--c-hud-border); padding:clamp(10px, 1.5vw, 22px); backdrop-filter:blur(10px); box-shadow:0 8px 25px rgba(0,0,0,0.95),inset 0 0 18px rgba(0,0,0,0.6); display: flex; flex-direction: column; }
+.hud-panel { position:absolute; background:var(--c-hud-bg); border:1px solid var(--c-hud-border); padding:clamp(10px, 1.5vw, 22px); border-radius: 12px; backdrop-filter:blur(10px); box-shadow:0 8px 25px rgba(0,0,0,0.95),inset 0 0 18px rgba(0,0,0,0.6); display: flex; flex-direction: column; }
 .hud-ph { font-size:clamp(0.8rem, 1.2vw, 1.2rem); font-weight:900; color:#fff; margin-bottom:10px; border-bottom:2px solid var(--c-primary); padding-bottom:5px; text-transform:uppercase; letter-spacing:2px; }
 
-/* Grid layout for responsiveness */
-#pnl-orbital { top:2vh; left:2vw; width:clamp(250px, 25vw, 420px); clip-path:polygon(0 0,100% 0,100% calc(100% - 15px),calc(100% - 15px) 100%,0 100%); }
-#pnl-surface { top:2vh; right:2vw; width:clamp(250px, 25vw, 420px); clip-path:polygon(0 0,100% 0,100% 100%,15px 100%,0 calc(100% - 15px)); }
-#pnl-vessel { bottom:2vh; left:2vw; width:clamp(300px, 35vw, 580px); clip-path:polygon(0 15px,15px 0,100% 0,100% 100%,0 100%); }
-#pnl-systems { bottom:2vh; right:2vw; width:clamp(250px, 25vw, 420px); clip-path:polygon(0 0,calc(100% - 15px) 0,100% 15px,100% 100%,0 100%); }
+#pnl-orbital { top:2vh; left:2vw; width:clamp(250px, 25vw, 420px); }
+#pnl-surface { top:2vh; right:2vw; width:clamp(250px, 25vw, 420px); }
+#pnl-vessel { bottom:2vh; left:2vw; width:clamp(300px, 35vw, 580px); }
+#pnl-systems { bottom:2vh; right:2vw; width:clamp(250px, 25vw, 420px); }
 
 @media (max-width: 900px) {
-  #pnl-systems { display: none; } /* Hide log on small screens */
+  #pnl-systems { display: none; }
   #pnl-orbital { width: 45vw; }
   #pnl-surface { width: 45vw; }
-  #pnl-vessel { bottom: 12vh; width: 96vw; left: 2vw; } /* Move up to make room for touch controls */
+  #pnl-vessel { bottom: 12vh; width: 96vw; left: 2vw; }
 }
 @media (max-width: 600px) {
-  #pnl-orbital { display: none; } /* Focus only on surface data for extreme mobile */
+  #pnl-orbital { display: none; }
   #pnl-surface { left: 2vw; width: 96vw; }
 }
 
@@ -139,61 +109,39 @@ canvas { position:absolute; top:0; left:0; width:100%; height:100%; }
 .vw { color:var(--c-warn); text-shadow:var(--glow-warn); }
 .vc { color:var(--c-crit); text-shadow:var(--glow-crit); animation:blink 0.4s infinite; }
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
-.pbc { width:100%; height:clamp(8px, 1.5vh, 14px); background:#080808; border:1px solid #444; position:relative; overflow:hidden; box-shadow:inset 0 0 8px rgba(0,0,0,1); margin-bottom: 5px;}
+.pbc { width:100%; height:clamp(8px, 1.5vh, 14px); background:#080808; border:1px solid #444; position:relative; overflow:hidden; box-shadow:inset 0 0 8px rgba(0,0,0,1); margin-bottom: 5px; border-radius: 4px;}
 .pbf { height:100%; background:var(--c-primary); transition:width 0.08s linear; }
-.pbm { position:absolute; top:0; left:0; width:100%; height:100%; background:repeating-linear-gradient(90deg,transparent,transparent 9.5%,rgba(0,0,0,0.85) 10%); }
 
-#center-reticle { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:100vw; height:100vh; pointer-events:none; }
-.ret-v { position:absolute; top:calc(50% - 20vh); left:calc(50% - 1px); width:2px; height:40vh; background:rgba(105,190,40,0.35); box-shadow:var(--glow); }
-.ret-h { position:absolute; top:calc(50% - 1px); left:calc(50% - 20vw); width:40vw; height:2px; background:rgba(105,190,40,0.35); box-shadow:var(--glow); }
-.pitch-ladder { position:absolute; top:50%; left:50%; width:clamp(200px, 30vw, 360px); height:2800px; transform-origin:center center; }
-.ladder-rung { position:absolute; left:50%; transform:translateX(-50%); width:clamp(80px, 15vw, 160px); height:2.5px; background:var(--c-primary); box-shadow:var(--glow); }
-.ladder-rung.neg { background:transparent; border-bottom:2.5px dashed var(--c-primary); box-shadow:none; }
-.ladder-rung::before, .ladder-rung::after { content:attr(data-p); position:absolute; top:-13px; color:#fff; font-size:clamp(0.8rem, 1.2vw, 1.25rem); font-family:monospace; text-shadow:0 2px 5px #000; }
-.ladder-rung::before { left:-40px; }
-.ladder-rung::after { right:-40px; }
-#alarm-sys { position:absolute; top:10vh; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:10px; z-index:100; pointer-events:none; width: 100%; text-align: center;}
-.alarm { background:rgba(55,0,0,0.9); border:3px solid var(--c-crit); color:var(--c-crit); padding:10px 20px; font-size:clamp(1.5rem, 4vw, 3rem); font-weight:900; letter-spacing:clamp(4px, 1vw, 16px); text-shadow:var(--glow-crit); box-shadow:0 0 45px rgba(255,34,0,0.6),inset 0 0 18px rgba(255,34,0,0.4); animation:alarmPulse 0.28s infinite alternate; display:none; white-space:nowrap; clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%); }
+#alarm-sys { position:absolute; top:15vh; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:10px; z-index:100; pointer-events:none; width: 100%; text-align: center;}
+.alarm { background:rgba(55,0,0,0.9); border:3px solid var(--c-crit); color:var(--c-crit); padding:10px 20px; font-size:clamp(1.5rem, 4vw, 3rem); font-weight:900; letter-spacing:clamp(4px, 1vw, 16px); text-shadow:var(--glow-crit); box-shadow:0 0 45px rgba(255,34,0,0.6),inset 0 0 18px rgba(255,34,0,0.4); animation:alarmPulse 0.28s infinite alternate; display:none; white-space:nowrap; border-radius: 10px; }
 @keyframes alarmPulse { 0%{opacity:1;transform:scale(1)} 100%{opacity:0.35;transform:scale(1.015)} }
-.tg { width:100%; height:clamp(50px, 8vh, 100px); background:rgba(0,0,0,0.65); border:1px solid #333; margin-top:8px; position:relative; flex-shrink: 0;}
-.tg-title { position:absolute; top:2px; left:4px; color:var(--c-tertiary); font-size:0.7rem; background:rgba(0,0,0,0.85); padding:2px 4px; z-index:2; }
+.tg { width:100%; height:clamp(50px, 8vh, 100px); background:rgba(0,0,0,0.65); border:1px solid #333; margin-top:8px; position:relative; flex-shrink: 0; border-radius: 6px; overflow: hidden;}
+.tg-title { position:absolute; top:2px; left:4px; color:var(--c-tertiary); font-size:0.7rem; background:rgba(0,0,0,0.85); padding:2px 4px; z-index:2; border-radius: 3px;}
 .tg-canvas { width:100%; height:100%; display:block; }
-#tgt-lock { position:absolute; width:clamp(60px, 10vw, 110px); height:clamp(60px, 10vw, 110px); border:2px solid var(--c-primary); transform:translate(-50%,-50%); display:none; box-shadow:inset 0 0 18px rgba(105,190,40,0.18),0 0 18px rgba(105,190,40,0.18); }
-#tgt-lock::before { content:'TARGET: 'attr(data-n); position:absolute; top:-20px; left:0; color:var(--c-primary); font-size:clamp(0.7rem, 1vw, 0.95rem); font-weight:bold; white-space:nowrap; }
-#tgt-lock::after { content:'DIST: 'attr(data-d); position:absolute; bottom:-20px; right:0; color:var(--c-info); font-size:clamp(0.7rem, 1vw, 0.95rem); font-weight:bold; white-space:nowrap; }
-.tc { position:absolute; width:14px; height:14px; border-color:var(--c-primary); border-style:solid; }
-.tc.tl { top:-2px; left:-2px; border-width:3px 0 0 3px; }
-.tc.tr { top:-2px; right:-2px; border-width:3px 3px 0 0; }
-.tc.bl { bottom:-2px; left:-2px; border-width:0 0 3px 3px; }
-.tc.br { bottom:-2px; right:-2px; border-width:0 3px 3px 0; }
 
-#time-warp-ui { position:absolute; top:2vh; left:50%; transform:translateX(-50%); display:flex; gap:10px; background:var(--c-hud-bg); border:1px solid var(--c-hud-border); padding:5px 15px; border-radius: 20px; z-index: 60; pointer-events: auto;}
-.tw-btn { background: transparent; border: none; color: var(--c-tertiary); font-family: monospace; font-size: clamp(1rem, 2vw, 1.5rem); font-weight: bold; cursor: pointer; transition: color 0.2s; padding: 5px 10px;}
-.tw-btn:hover { color: var(--c-info); }
-.tw-btn.active { color: var(--c-primary); text-shadow: var(--glow); border-bottom: 2px solid var(--c-primary); }
+#controls-hint { position:absolute;bottom:2vh;left:50%;transform:translateX(-50%);color:rgba(165,172,175,0.8);font-size:clamp(0.8rem, 1.2vw, 1.2rem);letter-spacing:2px;white-space:nowrap; background: rgba(0,0,0,0.5); padding: 8px 16px; border-radius: 20px;}
 
-/* ON-SCREEN CONTROLS (Mobile) */
+/* TOUCH CONTROLS */
 #touch-controls { position:absolute; bottom:2vh; left:0; width:100%; height:12vh; display:none; justify-content:space-between; padding:0 5vw; z-index:70; pointer-events:none; }
 @media (max-width: 900px) {
   #touch-controls { display:flex; }
   #controls-hint { display:none !important; }
 }
 .t-btn-group { display:flex; gap:15px; pointer-events:auto; }
-.t-btn { width:clamp(50px, 12vw, 80px); height:clamp(50px, 12vw, 80px); background:rgba(0,34,68,0.6); border:2px solid var(--c-primary); border-radius:50%; color:var(--c-primary); font-size:1.5rem; font-weight:bold; display:flex; justify-content:center; align-items:center; user-select:none; }
-.t-btn:active, .t-btn.sim-active { background:rgba(105,190,40,0.5); box-shadow:var(--glow); }
+.t-btn { width:clamp(60px, 15vw, 90px); height:clamp(60px, 15vw, 90px); background:rgba(0,34,68,0.8); border:3px solid var(--c-primary); border-radius:50%; color:var(--c-primary); font-size:2rem; font-weight:bold; display:flex; justify-content:center; align-items:center; user-select:none; box-shadow: 0 0 15px rgba(0,0,0,0.8);}
+.t-btn:active, .t-btn.sim-active { background:rgba(0,170,255,0.6); box-shadow:var(--glow); color: #fff; }
 
 /* END SCREEN */
 #end-screen { background:rgba(0,3,8,0.99); padding: 5vh 0;}
-#end-card { width:min(1050px,92vw); background:rgba(0,18,36,0.92); border:2px solid var(--c-primary); padding:clamp(20px, 5vw, 60px); position:relative; box-shadow:0 0 70px rgba(0,0,0,1),inset 0 0 45px rgba(105,190,40,0.08); clip-path:polygon(35px 0,100% 0,100% calc(100% - 35px),calc(100% - 35px) 100%,0 100%,0 35px); overflow-y: auto; max-height: 90vh;}
-#end-card::before { content:'END OF SIMULATION'; position:absolute; top:-8px; right:-8px; font-size:clamp(3rem, 10vw, 7rem); color:rgba(255,255,255,0.018); font-weight:900; pointer-events:none; white-space:nowrap; }
+#end-card { width:min(1050px,92vw); background:rgba(0,18,36,0.92); border:2px solid var(--c-primary); padding:clamp(20px, 5vw, 60px); position:relative; box-shadow:0 0 70px rgba(0,0,0,1),inset 0 0 45px rgba(0,170,255,0.1); overflow-y: auto; max-height: 90vh; border-radius: 20px;}
+#end-card::before { content:'END OF SIMULATION'; position:absolute; top:10px; right:10px; font-size:clamp(2rem, 8vw, 6rem); color:rgba(255,255,255,0.03); font-weight:900; pointer-events:none; white-space:nowrap; }
 #end-title { font-size:clamp(1.8rem,4vw,5rem); font-weight:900; border-bottom:4px solid #222; padding-bottom:15px; margin-bottom:20px; text-align:center; letter-spacing:clamp(4px, 1vw, 12px); }
 .dbr { display:flex; justify-content:space-between; font-size:clamp(0.9rem, 1.5vw, 1.7rem); margin:10px 0; border-bottom:1px dotted rgba(255,255,255,0.18); padding-bottom:8px; }
 .dbl { color:var(--c-tertiary); }
 .dbv { font-family:monospace; font-weight:bold; text-align: right;}
-#end-rating { font-size:clamp(1.5rem, 4vw, 4rem); text-align:center; margin-top:30px; font-weight:900; letter-spacing:2px; border:3px dashed rgba(255,255,255,0.08); padding:15px; background:rgba(0,0,0,0.55); }
+#end-rating { font-size:clamp(1.5rem, 4vw, 4rem); text-align:center; margin-top:30px; font-weight:900; letter-spacing:2px; border:3px dashed rgba(255,255,255,0.08); padding:15px; background:rgba(0,0,0,0.55); border-radius: 12px;}
 #end-cause { text-align:center; margin-top:15px; color:#aaa; font-style:italic; font-size:clamp(0.9rem, 1.5vw, 1.3rem); line-height:1.5; }
 
-/* Engine Flame Effect Class */
 .flame-active { box-shadow: 0 0 40px #00ffff !important; background: #00ffff !important; color: #000 !important; border-color: #fff !important;}
 </style>
 </head>
@@ -206,29 +154,23 @@ canvas { position:absolute; top:0; left:0; width:100%; height:100%; }
   <canvas id="c-atmo"></canvas>
   <canvas id="c-clouds"></canvas>
   <canvas id="c-terrain"></canvas>
-  <canvas id="c-traj"></canvas>
+  <canvas id="c-weather"></canvas>
   <canvas id="c-ship"></canvas>
   <canvas id="c-smoke"></canvas>
   <canvas id="c-fx"></canvas>
   <canvas id="c-ui"></canvas>
 
   <div class="vignette"></div>
-  <div class="crt"></div>
-  <div class="flicker"></div>
-  <div class="scanline"></div>
   <div class="lensflare" id="lensflare"></div>
 
   <div id="intro-screen" class="screen active">
     <canvas id="intro-planet-canvas"></canvas>
     <div id="intro-overlay"></div>
     <div id="intro-planet-label"></div>
-    <div id="intro-stats-panel"></div>
-    <div id="intro-boot-left"></div>
-    <div id="intro-boot-right"></div>
     <div id="intro-center">
       <div id="intro-title-wrap">
         <div id="intro-title-main">JAAP SPACE</div>
-        <div id="intro-subtitle">ADVANCED AEROSPACE SIMULATION ENGINE v15.0</div>
+        <div id="intro-subtitle">ADVANCED AEROSPACE SIMULATION ENGINE v16.0</div>
       </div>
     </div>
     <div id="intro-loader-wrap">
@@ -238,34 +180,20 @@ canvas { position:absolute; top:0; left:0; width:100%; height:100%; }
   </div>
 
   <div id="menu-screen" class="screen">
-    <div class="menu-grid"></div>
     <div class="menu-header">
       <h1>MISSION SELECT</h1>
-      <p>AEROSPACE SIMULATION ENGINE v15.0 — SELECT TARGET DESTINATION</p>
+      <p>SELECT TARGET DESTINATION & COMMENCE LAUNCH</p>
     </div>
     <div id="planet-carousel"></div>
   </div>
 
   <div id="hud-layer">
-    <div id="time-warp-ui">
-      <button class="tw-btn active" id="tw-1" onclick="window.director.setTimeWarp(1)">1x</button>
-      <button class="tw-btn" id="tw-10" onclick="window.director.setTimeWarp(10)">10x</button>
-      <button class="tw-btn" id="tw-100" onclick="window.director.setTimeWarp(100)">100x</button>
-      <button class="tw-btn" id="tw-1000" onclick="window.director.setTimeWarp(1000)">1000x</button>
-    </div>
-    <div id="tgt-lock" data-n="UNKNOWN" data-d="0 km">
-      <div class="tc tl"></div><div class="tc tr"></div><div class="tc bl"></div><div class="tc br"></div>
-    </div>
     <div id="alarm-sys">
       <div class="alarm" id="alarm-terrain">⚠ TERRAIN PULL UP ⚠</div>
       <div class="alarm" id="alarm-hull">⚠ HULL INTEGRITY CRITICAL ⚠</div>
       <div class="alarm" id="alarm-maxq">⚠ AERODYNAMIC OVERLOAD ⚠</div>
       <div class="alarm" id="alarm-fuel">⚠ BINGO FUEL ⚠</div>
       <div class="alarm" id="alarm-speed">⚠ EXCESSIVE DESCENT RATE ⚠</div>
-    </div>
-    <div id="center-reticle">
-      <div class="ret-v"></div><div class="ret-h"></div>
-      <div class="pitch-ladder" id="pitch-ladder"></div>
     </div>
     
     <div class="hud-panel" id="pnl-orbital">
@@ -274,10 +202,10 @@ canvas { position:absolute; top:0; left:0; width:100%; height:100%; }
       <div class="dr"><span class="dl">ABS ALTITUDE</span><span class="dv vp" id="ui-alt">0.00 km</span></div>
       <div class="dr"><span class="dl">APOAPSIS</span><span class="dv" id="ui-apo">0.00 km</span></div>
       <div class="dr"><span class="dl">PERIAPSIS</span><span class="dv" id="ui-peri">0.00 km</span></div>
-      <div class="dr"><span class="dl">ECCENTRICITY</span><span class="dv" id="ui-ecc">0.000</span></div>
       <div class="dr"><span class="dl">ORBITAL VEL</span><span class="dv vp" id="ui-ovel">0.0 m/s</span></div>
       <div class="tg"><div class="tg-title">VELOCITY HISTORY</div><canvas class="tg-canvas" id="graph-vel"></canvas></div>
     </div>
+    
     <div class="hud-panel" id="pnl-surface">
       <div class="hud-ph">SENSORS & ENVIRONMENT</div>
       <div class="dr"><span class="dl">RADAR ALT</span><span class="dv vw" id="ui-radar">0 m</span></div>
@@ -286,29 +214,28 @@ canvas { position:absolute; top:0; left:0; width:100%; height:100%; }
       <div class="dr"><span class="dl">LOCAL GRAVITY</span><span class="dv" id="ui-grav">0.00 m/s²</span></div>
       <div class="dr"><span class="dl">AIR DENSITY</span><span class="dv" id="ui-rho">0.0000 kg/m³</span></div>
       <div class="dr"><span class="dl">DYNAMIC Q</span><span class="dv" id="ui-q">0.00 kPa</span></div>
-      <div class="dr"><span class="dl">MACH</span><span class="dv" id="ui-mach">0.00</span></div>
       <div class="tg"><div class="tg-title">DYN PRESSURE HISTORY</div><canvas class="tg-canvas" id="graph-q"></canvas></div>
     </div>
+    
     <div class="hud-panel" id="pnl-vessel">
       <div class="hud-ph">VESSEL: SEAHAWK-1 HEAVY</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:clamp(10px, 2vw, 25px)">
         <div>
           <div class="dr" style="border:none;margin:0"><span class="dl">LFO FUEL</span><span class="dv" id="ui-fuel">100%</span></div>
-          <div class="pbc"><div class="pbf" id="bar-fuel" style="background:#ff5500"></div><div class="pbm"></div></div>
-          <div class="dr" style="border:none;margin:0"><span class="dl">RCS MONOPROP</span><span class="dv" id="ui-rcs">100%</span></div>
-          <div class="pbc"><div class="pbf" id="bar-rcs" style="background:#00ffff"></div><div class="pbm"></div></div>
-          <div class="dr"><span class="dl">VESSEL MASS</span><span class="dv" id="ui-mass">0 kg</span></div>
+          <div class="pbc"><div class="pbf" id="bar-fuel" style="background:#ff5500"></div></div>
+          <div class="dr" style="border:none;margin:0"><span class="dl">VESSEL MASS</span><span class="dv" id="ui-mass">0 kg</span></div>
         </div>
         <div>
           <div class="dr" style="border:none;margin:0"><span class="dl">HULL TEMP</span><span class="dv" id="ui-temp">293 K</span></div>
-          <div class="pbc"><div class="pbf" id="bar-temp"></div><div class="pbm"></div></div>
-          <div style="text-align:center;background:rgba(0,0,0,0.6);padding:clamp(5px,1vw,12px);border:1px solid #222; margin-top: 5px;">
+          <div class="pbc"><div class="pbf" id="bar-temp"></div></div>
+          <div style="text-align:center;background:rgba(0,0,0,0.6);padding:clamp(5px,1vw,12px);border:1px solid #222; margin-top: 5px; border-radius: 6px;">
             <div class="dl" style="margin-bottom:2px">MAIN ENGINE THRUST</div>
             <div style="font-size:clamp(1.5rem, 2.5vw, 2.5rem);font-weight:900;color:var(--c-primary);text-shadow:var(--glow)" id="ui-thrust">0 kN</div>
           </div>
         </div>
       </div>
     </div>
+    
     <div class="hud-panel" id="pnl-systems">
       <div class="hud-ph">AVIONICS FLIGHT LOG</div>
       <div id="event-log" style="flex-grow:1; overflow:hidden;font-size:0.88rem;color:#999;line-height:1.5;display:flex;flex-direction:column;justify-content:flex-end;margin-bottom:8px"></div>
@@ -316,15 +243,12 @@ canvas { position:absolute; top:0; left:0; width:100%; height:100%; }
         <span class="dl">G-FORCE</span><span class="dv" id="ui-gforce">1.00 G</span>
       </div>
       <div style="display:flex;justify-content:space-between;margin-top:4px">
-        <span class="dl">PEAK G</span><span class="dv" id="ui-maxg">1.00 G</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-top:4px">
         <span class="dl">FLIGHT STATE</span><span class="dv vp" id="ui-state">ORBIT</span>
       </div>
     </div>
     
-    <div id="controls-hint" style="position:absolute;bottom:2vh;left:50%;transform:translateX(-50%);color:rgba(165,172,175,0.55);font-size:clamp(0.6rem, 1vw, 0.8rem);letter-spacing:2px;white-space:nowrap;">
-      SPACE/W: MAIN ENGINE &nbsp;|&nbsp; A/D: PITCH &nbsp;|&nbsp; J/L: RCS TRANSLATE &nbsp;|&nbsp; </ >: TIME WARP
+    <div id="controls-hint">
+      [ARROW UP] MAIN ENGINE &nbsp;|&nbsp; [ARROW LEFT / RIGHT] STEER PITCH
     </div>
 
     <div id="touch-controls">
@@ -333,8 +257,6 @@ canvas { position:absolute; top:0; left:0; width:100%; height:100%; }
         <div class="t-btn" id="t-right">↻</div>
       </div>
       <div class="t-btn-group">
-        <div class="t-btn" id="t-rcs-l">←</div>
-        <div class="t-btn" id="t-rcs-r">→</div>
         <div class="t-btn" id="t-main" style="border-color:#00ffff; color:#00ffff;">▲</div>
       </div>
     </div>
@@ -363,11 +285,8 @@ canvas { position:absolute; top:0; left:0; width:100%; height:100%; }
 "use strict";
 const PI=Math.PI,TAU=PI*2,D2R=PI/180,R2D=180/PI;
 const G_CONST=6.6743e-11,R_GAS=8.314462618,STEFAN=5.670374419e-8;
-const MAX_DT=0.05,LOD_ALT=1000000,SURF_SPAN=600000;
+const MAX_DT=0.05,LOD_ALT=400000,SURF_SPAN=800000;
 
-// ============================================================
-// VECTOR3
-// ============================================================
 class V3 {
   constructor(x=0,y=0,z=0){this.x=x;this.y=y;this.z=z}
   set(x,y,z){this.x=x;this.y=y;this.z=z;return this}
@@ -379,8 +298,6 @@ class V3 {
   mag(){return Math.sqrt(this.magSq())}
   norm(){let m=this.mag();if(m>0)this.div(m);return this}
   clone(){return new V3(this.x,this.y,this.z)}
-  dot(v){return this.x*v.x+this.y*v.y+this.z*v.z}
-  cross(v){return new V3(this.y*v.z-this.z*v.y,this.z*v.x-this.x*v.z,this.x*v.y-this.y*v.x)}
 }
 
 const M={
@@ -390,14 +307,10 @@ const M={
   rng:(a,b)=>Math.random()*(b-a)+a
 };
 
-// ============================================================
-// AUDIO ENGINE (Synthesized from scratch)
-// ============================================================
 class SynthEngine {
   constructor() {
     this.ctx = null;
     this.masterGain = null;
-    this.engineNode = null;
     this.engineGain = null;
     this.initialized = false;
   }
@@ -407,20 +320,18 @@ class SynthEngine {
       window.AudioContext = window.AudioContext || window.webkitAudioContext;
       this.ctx = new AudioContext();
       this.masterGain = this.ctx.createGain();
-      this.masterGain.gain.value = 0.5;
+      this.masterGain.gain.value = 0.4;
       this.masterGain.connect(this.ctx.destination);
       this.initialized = true;
       this.setupEngineSound();
-    } catch(e) { console.warn("Audio Context Failed", e); }
+    } catch(e) {}
   }
   setupEngineSound() {
     if(!this.ctx) return;
     const bufferSize = this.ctx.sampleRate * 2;
     const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
     const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = Math.random() * 2 - 1;
-    }
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
     const noise = this.ctx.createBufferSource();
     noise.buffer = buffer;
     noise.loop = true;
@@ -440,8 +351,8 @@ class SynthEngine {
   }
   setEngineThrust(normalizedThrust) {
     if(!this.ctx || !this.engineGain) return;
-    this.engineGain.gain.setTargetAtTime(normalizedThrust * 0.8, this.ctx.currentTime, 0.1);
-    this.engineFilter.frequency.setTargetAtTime(100 + normalizedThrust * 800, this.ctx.currentTime, 0.1);
+    this.engineGain.gain.setTargetAtTime(normalizedThrust * 0.9, this.ctx.currentTime, 0.1);
+    this.engineFilter.frequency.setTargetAtTime(100 + normalizedThrust * 1000, this.ctx.currentTime, 0.1);
   }
   playAlarm(type) {
     if(!this.ctx) return;
@@ -450,10 +361,8 @@ class SynthEngine {
     osc.type = type === 'critical' ? 'sawtooth' : 'square';
     osc.frequency.setValueAtTime(type === 'critical' ? 880 : 440, this.ctx.currentTime);
     if(type === 'critical') osc.frequency.exponentialRampToValueAtTime(440, this.ctx.currentTime + 0.3);
-    
     gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
-    
     osc.connect(gain);
     gain.connect(this.masterGain);
     osc.start();
@@ -488,9 +397,6 @@ class SynthEngine {
   }
 }
 
-// ============================================================
-// SIMPLEX NOISE
-// ============================================================
 class SimplexNoise{
   constructor(seed=1234){
     this.p=new Uint8Array(256);
@@ -536,105 +442,87 @@ class SimplexNoise{
   }
 }
 
-// ============================================================
-// CELESTIAL DATABASE
-// ============================================================
 const PLANETS = {
   "Earth":{
     radius:6371000,mass:5.972e24,g:9.807,
     atmoP:101325,scaleH:8500,surfT:288,
     colorOcean:'#1a5fa8',colorLand1:'#2d7a28',colorLand2:'#6b8c3a',colorLand3:'#8b6c42',colorAtmo:'#87CEEB',colorAtmoGlow:'#4a9fd4',
     cloudColor:'rgba(255,255,255,0.7)',cloudDensity:0.55,
-    iceCapColor:'#e8f4f8',iceCapSize:0.18,
     terrainRough:0.48,craterDensity:0.01,hasClouds:true,
     safeV:10,classification:"Terrestrial Planet",
-    hazards:["THERMAL REENTRY","HIGH DRAG","OCEAN RISK"],
-    hazardColors:["#ff5500","#ffaa00","#00aaff"],
-    rings:false,
-    description:"Dense N₂-O₂ atmosphere with extensive liquid water oceans. Requires significant heat shielding for reentry. Watch dynamic pressure closely.",
-    surfaceFeatures:{ hasOcean:true, oceanColor:'#0a3d6b', oceanDepth:0.42 },
-    ambientLight:'rgba(100,160,255,0.15)'
+    hazards:["THERMAL REENTRY","HIGH DRAG"],
+    hazardColors:["#ff5500","#ffaa00"],
+    description:"Dense N₂-O₂ atmosphere. Standard gravity well.",
+    ambientLight:'rgba(100,160,255,0.15)',
+    weatherType: 'rain'
   },
   "Mars":{
     radius:3389500,mass:6.417e23,g:3.721,
     atmoP:610,scaleH:11100,surfT:210,
     colorOcean:null,colorLand1:'#c0430c',colorLand2:'#992e08',colorLand3:'#7a2506',colorAtmo:'#e89d7b',colorAtmoGlow:'#d4774a',
     cloudColor:'rgba(210,180,150,0.4)',cloudDensity:0.2,
-    iceCapColor:'#f0f0ff',iceCapSize:0.12,
     terrainRough:0.88,craterDensity:0.65,hasClouds:true,
     safeV:12,classification:"Terrestrial Planet",
-    hazards:["THIN ATMOSPHERE","HIGH CRATERS","DUST STORMS"],
-    hazardColors:["#ff8800","#ff4400","#cc8800"],
-    rings:false,
-    description:"Thin CO₂ atmosphere — parachute-only landing impossible. Propulsive terminal descent mandatory. Extreme crater density requires precise targeting.",
-    surfaceFeatures:{ hasOcean:false },
-    ambientLight:'rgba(200,120,80,0.2)'
+    hazards:["THIN ATMOSPHERE","HIGH CRATERS"],
+    hazardColors:["#ff8800","#ff4400"],
+    description:"Thin CO₂ atmosphere. Propulsive terminal descent mandatory.",
+    ambientLight:'rgba(200,120,80,0.2)',
+    weatherType: 'dust'
   },
   "Venus":{
     radius:6051800,mass:4.867e24,g:8.87,
     atmoP:9300000,scaleH:15900,surfT:737,
     colorOcean:null,colorLand1:'#9a7a35',colorLand2:'#7a5e28',colorLand3:'#5a4018',colorAtmo:'#e8b840',colorAtmoGlow:'#c89030',
     cloudColor:'rgba(240,210,120,0.85)',cloudDensity:0.95,
-    iceCapColor:null,iceCapSize:0,
     terrainRough:0.32,craterDensity:0.12,hasClouds:true,
     safeV:5,classification:"Extreme Terrestrial",
-    hazards:["CRUSHING PRESSURE","LEAD-MELT TEMP","ACID CLOUDS"],
-    hazardColors:["#ff0000","#ff3300","#ffcc00"],
-    rings:false,
-    description:"Supercritical CO₂ atmosphere at 93x Earth pressure. Surface temperature 737K. Thermal structural failure is near-certain without extreme shielding.",
-    surfaceFeatures:{ hasOcean:false },
-    ambientLight:'rgba(255,180,40,0.3)'
+    hazards:["CRUSHING PRESSURE","LEAD-MELT TEMP"],
+    hazardColors:["#ff0000","#ff3300"],
+    description:"Supercritical CO₂ atmosphere. Extreme heat and pressure.",
+    ambientLight:'rgba(255,180,40,0.3)',
+    weatherType: 'acid'
   },
   "Luna":{
     radius:1737400,mass:7.342e22,g:1.62,
     atmoP:0,scaleH:0,surfT:250,
     colorOcean:null,colorLand1:'#aaaaaa',colorLand2:'#888888',colorLand3:'#555555',colorAtmo:'transparent',colorAtmoGlow:'transparent',
     cloudColor:null,cloudDensity:0,
-    iceCapColor:'#ccccee',iceCapSize:0.04,
     terrainRough:0.97,craterDensity:1.0,hasClouds:false,
     safeV:15,classification:"Natural Satellite",
-    hazards:["HARD VACUUM","EXTREME CRATERS","NO ATMOSPHERE"],
-    hazardColors:["#00ffff","#ff4400","#aaaaaa"],
-    rings:false,
-    description:"Complete vacuum. 100% propulsion-dependent descent. Maximum crater density — manual targeting of landing zone absolutely critical.",
-    surfaceFeatures:{ hasOcean:false },
-    ambientLight:'rgba(200,200,220,0.1)'
+    hazards:["HARD VACUUM","EXTREME CRATERS"],
+    hazardColors:["#00ffff","#ff4400"],
+    description:"Complete vacuum. 100% propulsion-dependent descent.",
+    ambientLight:'rgba(200,200,220,0.1)',
+    weatherType: 'none'
   },
   "Titan":{
     radius:2574700,mass:1.345e23,g:1.352,
     atmoP:146700,scaleH:40000,surfT:94,
     colorOcean:'#3a2a10',colorLand1:'#5a3c20',colorLand2:'#3d2810',colorLand3:'#251808',colorAtmo:'#e0a030',colorAtmoGlow:'#c88020',
     cloudColor:'rgba(200,150,60,0.65)',cloudDensity:0.8,
-    iceCapColor:null,iceCapSize:0,
     terrainRough:0.22,craterDensity:0.04,hasClouds:true,
     safeV:20,classification:"Hydrocarbon Satellite",
-    hazards:["METHANE LAKES","THICK SMOG","EXTREME COLD"],
-    hazardColors:["#ff8800","#cc6600","#00aaff"],
-    rings:false,
-    description:"Thick nitrogen/methane atmosphere. Low gravity enables glide descent. Liquid methane lakes at low altitudes — avoid direct contact.",
-    surfaceFeatures:{ hasOcean:true, oceanColor:'#2a1808', oceanDepth:0.3 },
-    ambientLight:'rgba(200,140,50,0.25)'
+    hazards:["THICK SMOG","EXTREME COLD"],
+    hazardColors:["#cc6600","#00aaff"],
+    description:"Thick nitrogen/methane atmosphere. Low gravity.",
+    ambientLight:'rgba(200,140,50,0.25)',
+    weatherType: 'snow'
   },
-  "Jupiter":{
-    radius:71492000,mass:1.898e27,g:24.79,
-    atmoP:2000000,scaleH:27000,surfT:165,
-    colorOcean:null,colorLand1:'#d4a373',colorLand2:'#faedcd',colorLand3:'#e9edc9',colorAtmo:'#e8c39e',colorAtmoGlow:'#d4a373',
-    cloudColor:'rgba(220,200,180,0.85)',cloudDensity:0.9,
-    iceCapColor:null,iceCapSize:0,
-    terrainRough:0.0,craterDensity:0,hasClouds:true,
-    safeV:1,classification:"Gas Giant",
-    hazards:["EXTREME GRAVITY", "CRUSHING PRESSURE", "NO SURFACE"],
-    hazardColors:["#ff0000", "#aa0000", "#550000"],
-    rings:false,
-    description:"Massive gas giant. No solid surface. Attempting landing is fatal. Atmospheric probes only.",
-    surfaceFeatures:{ hasOcean:false },
-    ambientLight:'rgba(200,180,150,0.2)'
+  "Pluto":{
+    radius:1188000,mass:1.303e22,g:0.62,
+    atmoP:1.0,scaleH:50000,surfT:40,
+    colorOcean:null,colorLand1:'#dcdcdc',colorLand2:'#b0b0b0',colorLand3:'#8b8b8b',colorAtmo:'#a8d0e6',colorAtmoGlow:'#7ab8d6',
+    cloudColor:'rgba(200,220,240,0.2)',cloudDensity:0.1,
+    terrainRough:0.6,craterDensity:0.4,hasClouds:false,
+    safeV:22,classification:"Dwarf Planet",
+    hazards:["DEEP FREEZE","LOW GRAVITY"],
+    hazardColors:["#00aaff","#00ffff"],
+    description:"Extremely distant, frozen world. Very little atmosphere.",
+    ambientLight:'rgba(180,200,220,0.05)',
+    weatherType: 'none'
   }
 };
 
-// ============================================================
-// PARTICLE SYSTEM
-// ============================================================
 class ParticleSystem{
   constructor(){
     this.maxP=15000;this.idx=0;
@@ -642,7 +530,7 @@ class ParticleSystem{
     for(let i=0;i<this.maxP;i++)this.p[i]={active:false,x:0,y:0,vx:0,vy:0,life:0,maxLife:1,color:'#fff',size:1,type:0}
   }
   emit(x,y,vx,vy,type){
-    let counts={thrust:20,rcs:5,plasma:15,explosion:600,smoke:8,debris:80,warp:5};
+    let counts={thrust:25,plasma:15,explosion:600,smoke:10,debris:80};
     let n=counts[type]||1;
     for(let i=0;i<n;i++){
       this.idx=(this.idx+1)%this.maxP;
@@ -651,9 +539,6 @@ class ParticleSystem{
       if(type==='thrust'){
         p.type=0;p.color=Math.random()>0.3?'#00ffff':'#ffffff';p.size=M.rng(10,25);
         p.vx=vx+M.rng(-100,100);p.vy=vy+M.rng(-100,100);p.life=p.maxLife=M.rng(0.15,0.6);
-      }else if(type==='rcs'){
-        p.type=1;p.color='#aaffff';p.size=5;
-        p.vx=vx+M.rng(-40,40);p.vy=vy+M.rng(-40,40);p.life=p.maxLife=0.35;
       }else if(type==='plasma'){
         p.type=2;let r=Math.random();
         p.color=r>0.5?'#ffaa00':(r>0.2?'#ff3300':'#ffffff');p.size=M.rng(20,60);
@@ -671,9 +556,6 @@ class ParticleSystem{
         p.color=dc[Math.floor(Math.random()*3)];p.size=M.rng(4,18);
         let a=Math.random()*TAU,vm=M.rng(300,1200);
         p.vx=Math.cos(a)*vm;p.vy=Math.sin(a)*vm;p.life=p.maxLife=M.rng(2,6);
-      }else if(type==='warp'){
-        p.type=6; p.color='#ffffff'; p.size=M.rng(1, 3);
-        p.vx=vx; p.vy=vy; p.life=p.maxLife=M.rng(0.5, 1.5);
       }
     }
   }
@@ -682,11 +564,10 @@ class ParticleSystem{
       let p=this.p[i];if(!p.active)continue;
       p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;
       if(p.type===3||p.type===4){p.size+=dt*25;p.vx*=0.94;p.vy*=0.94}
-      if(p.type===6){ p.size += dt * 5; } // Warp streaks get longer
       if(p.life<=0)p.active=false;
     }
   }
-  render(ctxFx,ctxSmoke,cx,cy,zoom,sw,sh, timeWarp){
+  render(ctxFx,ctxSmoke,cx,cy,zoom,sw,sh){
     let setup=(c)=>{c.save();c.translate(sw/2,sh/2);c.scale(zoom,zoom);c.translate(-cx,-cy)};
     setup(ctxFx);setup(ctxSmoke);
     ctxFx.globalCompositeOperation='lighter';
@@ -698,26 +579,54 @@ class ParticleSystem{
       let tc=isSmoke?ctxSmoke:ctxFx;
       tc.globalAlpha=a*(isSmoke?0.45:1.0);
       tc.fillStyle=p.color;
-      
-      if(p.type === 6) { // Warp effect
-        tc.strokeStyle = p.color;
-        tc.lineWidth = p.size;
-        tc.beginPath();
-        tc.moveTo(p.x, p.y);
-        tc.lineTo(p.x - p.vx * 0.1 * timeWarp, p.y - p.vy * 0.1 * timeWarp);
-        tc.stroke();
-      } else {
-        tc.beginPath();tc.arc(p.x,p.y,Math.max(0.5,p.size*a),0,TAU);tc.fill();
-      }
+      tc.beginPath();tc.arc(p.x,p.y,Math.max(0.5,p.size*a),0,TAU);tc.fill();
     }
     ctxFx.globalAlpha=1;ctxSmoke.globalAlpha=1;
     ctxFx.restore();ctxSmoke.restore();
   }
 }
 
-// ============================================================
-// PLANETARY RENDERER
-// ============================================================
+class WeatherSystem {
+  constructor(sw, sh) {
+    this.sw = sw; this.sh = sh;
+    this.particles = [];
+    this.max = 800;
+    for(let i=0; i<this.max; i++) {
+       this.particles.push({
+          x: Math.random() * sw,
+          y: Math.random() * sh,
+          s: Math.random() * 3 + 1,
+          vx: Math.random() * 2 - 1,
+          vy: Math.random() * 10 + 5
+       });
+    }
+  }
+  render(ctx, type, dt) {
+    if(type === 'none') return;
+    ctx.clearRect(0, 0, this.sw, this.sh);
+    ctx.fillStyle = type === 'rain' ? 'rgba(150,200,255,0.4)' : (type === 'snow' ? 'rgba(255,255,255,0.6)' : 'rgba(200,150,100,0.5)');
+    
+    for(let p of this.particles) {
+       p.x += p.vx * dt * 60;
+       p.y += p.vy * dt * 60;
+       if(p.y > this.sh) {
+          p.y = -10;
+          p.x = Math.random() * this.sw;
+       }
+       if(p.x > this.sw) p.x = 0;
+       if(p.x < 0) p.x = this.sw;
+
+       ctx.beginPath();
+       if(type === 'rain') {
+          ctx.ellipse(p.x, p.y, 1, p.s * 3, 0, 0, TAU);
+       } else {
+          ctx.arc(p.x, p.y, p.s, 0, TAU);
+       }
+       ctx.fill();
+    }
+  }
+}
+
 class PlanetRenderer{
   constructor(pd,ctxT,ctxP,ctxA,ctxC,sw,sh){
     this.pd=pd;this.ctxT=ctxT;this.ctxP=ctxP;this.ctxA=ctxA;this.ctxC=ctxC;
@@ -739,7 +648,7 @@ class PlanetRenderer{
       let b=this.noise.n3(nx*0.12,55,0);
       this.biomes[i]=b>0.2?1:(b>-0.2?0:2);
       if(this.pd.craterDensity>0){
-        let nC=Math.floor(150*this.pd.craterDensity); // Increased craters
+        let nC=Math.floor(150*this.pd.craterDensity); 
         for(let c=0;c<nC;c++){
           let cx=(this.noise.n3(c*17.3,0,0)+1)/2*700;
           let cr=(this.noise.n3(c*23.1,10,0)+1)/2*30+4;
@@ -754,16 +663,24 @@ class PlanetRenderer{
       }
       this.heights[i]=h;
     }
-    this.padIdx=Math.floor(this.RES/2);
-    this.padW=400;
-    let padH=this.heights[this.padIdx];
-    for(let i=this.padIdx-this.padW*3;i<this.padIdx+this.padW*3;i++){
+    
+    // Create the exact landing pad in the exact center
+    this.padIdx = Math.floor(this.RES/2);
+    this.padW = 400;
+    let padH = this.heights[this.padIdx];
+    
+    for(let i=this.padIdx-this.padW*3; i<this.padIdx+this.padW*3; i++){
       if(i<0||i>=this.RES)continue;
       let d=Math.abs(i-this.padIdx);
       if(d<this.padW){this.heights[i]=padH;this.biomes[i]=3}
-      else{let t=M.clamp((d-this.padW)/(this.padW*2),0,1);let e=0.5*(1-Math.cos(PI*t));this.heights[i]=M.lerp(padH,this.heights[i],e)}
+      else{
+          let t=M.clamp((d-this.padW)/(this.padW*2),0,1);
+          let e=0.5*(1-Math.cos(PI*t));
+          this.heights[i]=M.lerp(padH,this.heights[i],e)
+      }
     }
   }
+  
   getH(wx){
     let np=(wx+SURF_SPAN/2)/SURF_SPAN;
     if(np<0)return this.heights[0];
@@ -772,29 +689,22 @@ class PlanetRenderer{
     return M.lerp(this.heights[lo],this.heights[lo+1],fr);
   }
 
-  // Draw planet as a detailed sphere from space
   renderSphere(ctx,alt,zoom,sw,sh, vX, vY){
     this.rot+=0.00012;
-    // Calculate apparent radius based on distance and zoom
-    // Ensure it smoothly transitions as we approach
     let dist = this.pd.radius + alt;
     let apparentSize = (this.pd.radius / dist) * Math.max(sw, sh) * 0.8;
     
-    // Scale apparent size by current camera zoom to allow for seamless transition
-    // The trick is mapping the global zoom to the local sphere drawing
     let cr = Math.max(10, apparentSize * (zoom * dist * 0.0000001)); 
-    if (cr > sw * 2) cr = sw * 2; // Cap to prevent insane drawing
+    if (cr > sw * 2) cr = sw * 2; 
 
-    // Calculate position on screen relative to camera
     let cx = sw/2 - (vX * zoom);
-    let cy = sh/2 + (alt + this.pd.radius) * zoom; // Center of planet relative to ship
+    let cy = sh/2 + (alt + this.pd.radius) * zoom; 
 
     ctx.save();
     ctx.translate(cx,cy);
 
-    // Outer glow / atmosphere
     if(this.pd.atmoP>0){
-      let hr=cr*(1+(this.pd.scaleH*8)/this.pd.radius); // Thicker visual atmo from space
+      let hr=cr*(1+(this.pd.scaleH*8)/this.pd.radius); 
       let hg=ctx.createRadialGradient(0,0,cr*0.8,0,0,hr);
       hg.addColorStop(0,this.pd.colorAtmoGlow);
       hg.addColorStop(0.35,this.pd.colorAtmo+'88');
@@ -803,7 +713,6 @@ class PlanetRenderer{
       ctx.beginPath();ctx.arc(0,0,hr,0,TAU);ctx.fill();
     }
 
-    // Base sphere
     let sg=ctx.createRadialGradient(-cr*0.3,-cr*0.3,cr*0.1,0,0,cr);
     sg.addColorStop(0,this.pd.colorLand1);
     sg.addColorStop(0.5,this.pd.colorLand2);
@@ -815,9 +724,8 @@ class PlanetRenderer{
       ctx.save();
       ctx.beginPath();ctx.arc(0,0,cr,0,TAU);ctx.clip();
 
-      // Ocean layer
-      if(this.pd.surfaceFeatures&&this.pd.surfaceFeatures.hasOcean&&this.pd.surfaceFeatures.oceanColor){
-        let od=this.pd.surfaceFeatures.oceanDepth||0.4;
+      if(this.pd.colorOcean){
+        let od=0.4;
         let bands=Math.min(160,Math.floor(cr/2));
         ctx.lineWidth=(cr*2)/bands+1;
         for(let i=0;i<bands;i++){
@@ -839,13 +747,12 @@ class PlanetRenderer{
               ctx.moveTo(px,sy);
             }
           }
-          ctx.strokeStyle=this.pd.surfaceFeatures.oceanColor;
+          ctx.strokeStyle=this.pd.colorOcean;
           ctx.globalAlpha=0.7;ctx.stroke();
         }
         ctx.globalAlpha=1;
       }
 
-      // Land texture bands
       let bands=Math.min(200,Math.floor(cr/2.2));
       ctx.lineWidth=(cr*2)/bands+1.2;
       for(let i=0;i<bands;i++){
@@ -865,53 +772,25 @@ class PlanetRenderer{
           else ctx.lineTo(px,disp);
         }
         let bn=this.noise.n3(lat*3.5,0.5,0);
-        let mc=lat>PI/2-0.3||lat<-PI/2+0.3;
-        if(mc&&this.pd.iceCapColor){ctx.strokeStyle=this.pd.iceCapColor}
-        else ctx.strokeStyle=bn>0.15?this.pd.colorLand1:(bn>-0.15?this.pd.colorLand2:this.pd.colorLand3);
+        ctx.strokeStyle=bn>0.15?this.pd.colorLand1:(bn>-0.15?this.pd.colorLand2:this.pd.colorLand3);
         ctx.globalAlpha=0.88;ctx.stroke();
       }
       ctx.globalAlpha=1;
 
-      // Cloud layer
-      if(this.pd.hasClouds&&this.pd.cloudDensity>0){
-        let cbands=Math.min(120,Math.floor(cr/3));
-        for(let i=0;i<cbands;i++){
-          let lat=(i/cbands)*PI-(PI/2);
-          let sy=Math.sin(lat)*cr;
-          let rl=Math.cos(lat)*cr;
-          ctx.beginPath();
-          let step=Math.max(3,rl/18);
-          for(let px=-rl;px<=rl;px+=step){
-            let lon=Math.asin(M.clamp(px/rl,-1,1))+(this.rot*1.55);
-            let nx=Math.cos(lat)*Math.cos(lon);
-            let ny=Math.sin(lat);
-            let nz=Math.cos(lat)*Math.sin(lon);
-            let cv=this.noise.n3(nx*5,ny*5,nz*5);
-            if(cv>0.38-this.pd.cloudDensity*0.3){
-              ctx.arc(px,sy,cr*0.032,0,TAU);
-            }
-          }
-          ctx.fillStyle=this.pd.cloudColor||'rgba(255,255,255,0.7)';
-          ctx.globalAlpha=0.5;ctx.fill();
-        }
-        ctx.globalAlpha=1;
-      }
-      
-      // City lights on night side (if Earth)
-      if(this.pd.classification === "Terrestrial Planet" && this.pd.colorOcean === '#1a5fa8') {
-         let spec2 = ctx.createRadialGradient(cr*0.4,cr*0.4,cr*0.1, cr*0.4,cr*0.4,cr*0.8);
-         spec2.addColorStop(0, 'rgba(255, 220, 150, 0.4)');
-         spec2.addColorStop(1, 'transparent');
-         ctx.globalCompositeOperation = 'screen';
-         ctx.fillStyle = spec2;
-         ctx.beginPath(); ctx.arc(0,0,cr,0,TAU); ctx.fill();
-         ctx.globalCompositeOperation = 'source-over';
-      }
+      // Draw the tiny blue dot for landing at the top pole (x=0 corresponds to top in our simple model)
+      ctx.fillStyle = '#0044ff';
+      ctx.shadowColor = '#00aaff';
+      ctx.shadowBlur = 20;
+      ctx.beginPath();
+      // Adjust dot size based on radius
+      let dotR = Math.max(2, cr * 0.05);
+      ctx.arc(0, -cr * 0.98, dotR, 0, TAU);
+      ctx.fill();
+      ctx.shadowBlur = 0;
 
       ctx.restore();
     }
 
-    // Terminator shadow
     let shadow=ctx.createLinearGradient(cr*0.2,-cr,cr,cr);
     shadow.addColorStop(0,'rgba(0,0,0,0)');
     shadow.addColorStop(0.45,'rgba(0,0,0,0.55)');
@@ -929,7 +808,6 @@ class PlanetRenderer{
     ctx.scale(zoom,zoom);
     ctx.translate(-cx,-cy);
 
-    // Sky gradient
     if(this.pd.atmoP>0){
       let dens=Math.exp(-Math.max(0,alt)/this.pd.scaleH);
       ctx.save();ctx.setTransform(1,0,0,1,0,0);
@@ -951,7 +829,7 @@ class PlanetRenderer{
       [this.pd.colorLand1,'#0a0a0a'],
       [this.pd.colorLand2,'#0a0a0a'],
       [this.pd.colorLand3,'#0a0a0a'],
-      ['#111111','#69BE28']
+      ['#111111','#00aaff'] // pad color
     ];
 
     for(let bid=0;bid<4;bid++){
@@ -974,25 +852,31 @@ class PlanetRenderer{
       if(drawing){ctx.lineTo(lastX,50000);ctx.lineTo(startX,50000);ctx.closePath();ctx.fill();ctx.stroke()}
     }
 
-    // Landing pad
+    // Landing pad visuals at exact center x=0
     let px=-SURF_SPAN/2+(this.padIdx/this.RES)*SURF_SPAN;
     let py=-this.heights[this.padIdx];
     let pw=(this.padW*2/this.RES)*SURF_SPAN;
-    ctx.fillStyle='#181818';ctx.strokeStyle='#69BE28';ctx.lineWidth=3;
-    ctx.fillRect(px-pw/2,py,pw,50);ctx.strokeRect(px-pw/2,py,pw,50);
-    ctx.fillStyle='#ffaa00';
-    for(let sx2=px-pw/2;sx2<px+pw/2;sx2+=55){ctx.fillRect(sx2,py+12,28,5)}
+    
+    ctx.fillStyle='#181818';ctx.strokeStyle='#00aaff';ctx.lineWidth=5;
+    ctx.fillRect(px-pw/2,py,pw,50);
+    ctx.strokeRect(px-pw/2,py,pw,50);
+    
+    // Massive blue beacon on the pad so it's super visible from afar
     let t=Date.now();
-    if(t%1100<550){
-      ctx.fillStyle='#00ffff';ctx.shadowBlur=55;ctx.shadowColor='#00ffff';
-      ctx.beginPath();ctx.arc(px-pw/2+18,py-22,14,0,TAU);ctx.fill();
-      ctx.beginPath();ctx.arc(px+pw/2-18,py-22,14,0,TAU);ctx.fill();
+    ctx.fillStyle = `rgba(0, 100, 255, ${0.4 + Math.sin(t/300)*0.2})`;
+    ctx.beginPath();
+    ctx.moveTo(px-pw/2, py);
+    ctx.lineTo(px+pw/2, py);
+    ctx.lineTo(px, py - 5000); // Shoot beam into sky
+    ctx.fill();
+    
+    // Glowing dots on pad
+    if(t%1000<500){
+      ctx.fillStyle='#00ffff';ctx.shadowBlur=60;ctx.shadowColor='#00ffff';
+      ctx.beginPath();ctx.arc(px-pw/2+25,py-30,20,0,TAU);ctx.fill();
+      ctx.beginPath();ctx.arc(px+pw/2-25,py-30,20,0,TAU);ctx.fill();
       ctx.shadowBlur=0;
     }
-    ctx.strokeStyle='#00ffff';ctx.lineWidth=4;
-    ctx.beginPath();ctx.ellipse(px,py,130,28,0,0,TAU);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(px,py-22);ctx.lineTo(px,py+22);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(px-22,py);ctx.lineTo(px+22,py);ctx.stroke();
 
     if(this.pd.ambientLight){
       ctx.save();ctx.setTransform(1,0,0,1,0,0);
@@ -1023,56 +907,43 @@ class PlanetRenderer{
   }
 }
 
-// ============================================================
-// SPACECRAFT
-// ============================================================
 class Vessel{
   constructor(){this.reset()}
   reset(pd = null){
-    // Determine starting position based on planet
-    let startRadius = pd ? pd.radius * 30 : 100000000; 
+    // Start directly above the target pad (x=0) and high up so it's a visible sphere
+    let startRadius = pd ? pd.radius * 2 : 10000000; 
     
-    this.pos=new V3(startRadius, -startRadius, 0); // Start diagonally very far
+    this.pos=new V3(0, -pd.radius - startRadius, 0); 
     
-    // Orbital velocity calculation for a highly elliptical approach
-    let mu = pd ? G_CONST * pd.mass : G_CONST * 5.972e24;
-    let r = this.pos.mag();
-    let vMag = Math.sqrt(mu / r) * 0.4; // Slower than circular to fall inwards
-    
-    this.vel=new V3(-vMag * 0.8, vMag * 0.2, 0); // Aiming towards planet
+    // Slower approach
+    this.vel=new V3(0, 500, 0); 
     this.acc=new V3(0,0,0);
     
-    // Point retrograde to fall
-    this.pitch= Math.atan2(this.vel.y, this.vel.x) + PI/2;
+    this.pitch= 0; // Pointing straight up initially
     
     this.angVel=0;
     this.massDry=22500;
-    this.massLFO=120000;this.massLFO_max=120000; // Increased fuel for long journeys
-    this.massMono=12500;this.massMono_max=12500;
-    this.thrust=3500000; // More thrust
-    this.thrustRCS=250000;
-    this.ispMain=360;this.ispRCS=280;
+    this.massLFO=120000;this.massLFO_max=120000; 
+    this.thrust=4500000; 
+    this.ispMain=360;
     this.burnMain=this.thrust/(this.ispMain*9.81);
-    this.burnRCS=this.thrustRCS/(this.ispRCS*9.81);
     this.area=42.5;this.cd=0.95;
     this.hullT=293;this.heatCap=1200000;
-    this.ctrl={main:false,rcsL:false,rcsR:false,pUp:false,pDown:false};
+    this.ctrl={main:false,pUp:false,pDown:false};
     this.state='ORBIT';this.failMsg='';
     this.maxG=1;
     this.telem=[];this.telemT=0;
   }
-  mass(){return this.massDry+this.massLFO+this.massMono}
+  mass(){return this.massDry+this.massLFO}
   update(dt,pd,radAlt){
     if(this.state==='CRASHED'||this.state==='LANDED')return{q:0,g:0,mach:0,rho:0};
     this.acc.set(0,0,0);
-    let angAcc=0,m=this.mass(),alt=Math.max(0, -this.pos.y - pd.radius); // True altitude from center
+    let angAcc=0,m=this.mass(),alt=Math.max(0, -this.pos.y - pd.radius); 
     
-    // Gravity calculation from center of planet
     let distSq = this.pos.x*this.pos.x + (this.pos.y + pd.radius)*(this.pos.y + pd.radius);
     let dist = Math.sqrt(distSq);
     let fG = (G_CONST * pd.mass) / distSq;
     
-    // Gravity vector pointing to planet center (0, -pd.radius)
     let gDirX = (0 - this.pos.x) / dist;
     let gDirY = (-pd.radius - this.pos.y) / dist;
     
@@ -1080,7 +951,7 @@ class Vessel{
     this.acc.y += gDirY * fG;
 
     let q=0,mach=0,rho=0;
-    if(pd.atmoP>0&&alt>0 && alt < pd.scaleH * 15){ // Only calculate aero if close enough
+    if(pd.atmoP>0&&alt>0 && alt < pd.scaleH * 15){ 
       let rho0=pd.atmoP/(R_GAS*pd.surfT);
       rho=rho0*Math.exp(-alt/pd.scaleH);
       let vs=this.vel.magSq();
@@ -1095,55 +966,38 @@ class Vessel{
         this.acc.add(dv.mul(drag/m));
         let hr=1.83e-4*Math.sqrt(rho)*Math.pow(spd,3)*this.area;
         this.hullT+=(hr*dt)/this.heatCap;
-        
-        // Aero forces try to flip the ship
-        if(q>2000){
-          let va=Math.atan2(this.vel.y,this.vel.x)+(PI/2);
-          let diff=M.wrap(this.pitch-va);
-          let aeroT=q/100000;
-          if(Math.abs(diff)<PI/2)angAcc-=diff*aeroT;
-          else{let rd=M.wrap(this.pitch-(va+PI));angAcc-=rd*aeroT}
-        }
       }
     }
     
-    // Cooling
     let cool=0.92*STEFAN*this.area*(Math.pow(this.hullT,4)-Math.pow(pd.surfT,4));
     this.hullT-=(cool*dt)/this.heatCap;
     if(this.hullT<pd.surfT)this.hullT=pd.surfT;
     
-    // Propulsion
     if(this.ctrl.main&&this.massLFO>0){
       let td=new V3(Math.sin(this.pitch),-Math.cos(this.pitch),0);
       this.acc.add(td.mul(this.thrust/m));
       this.massLFO-=this.burnMain*dt;
     }
-    if(this.massMono>0){
-      let rp=this.thrustRCS/m,rc=this.burnRCS*dt;
-      let ca=Math.cos(this.pitch),sa=Math.sin(this.pitch);
-      if(this.ctrl.rcsL){this.acc.add(new V3(-ca,-sa,0).mul(rp));this.massMono-=rc}
-      if(this.ctrl.rcsR){this.acc.add(new V3(ca,sa,0).mul(rp));this.massMono-=rc}
-      if(this.ctrl.pDown){angAcc+=8.5;this.massMono-=rc}
-      if(this.ctrl.pUp){angAcc-=8.5;this.massMono-=rc}
-    }
+    
+    // Steering based on arrows left/right
+    if(this.ctrl.pDown){angAcc+=8.5;}
+    if(this.ctrl.pUp){angAcc-=8.5;}
     
     if(this.massLFO<0)this.massLFO=0;
-    if(this.massMono<0)this.massMono=0;
     
     this.vel.add(this.acc.clone().mul(dt));
     this.pos.add(this.vel.clone().mul(dt));
     this.angVel+=angAcc*dt;
-    this.angVel*=0.92; // Damping
+    this.angVel*=0.92; 
     this.pitch+=this.angVel*dt;
     this.pitch=M.wrap(this.pitch);
     
     let gf=this.acc.mag()/9.81;
     if(gf>this.maxG)this.maxG=gf;
     
-    // Failure conditions
-    if(this.hullT>4400){this.state='CRASHED';this.failMsg='CATASTROPHIC HULL MELTDOWN (THERMAL LIMIT 4400K EXCEEDED)'}
-    if(gf>28){this.state='CRASHED';this.failMsg='STRUCTURAL SHEAR FAILURE (28G LIMIT EXCEEDED)'}
-    if(q>180000){this.state='CRASHED';this.failMsg='AERODYNAMIC DISASSEMBLY (MAX-Q 180 kPa EXCEEDED)'}
+    if(this.hullT>4400){this.state='CRASHED';this.failMsg='CATASTROPHIC HULL MELTDOWN'}
+    if(gf>28){this.state='CRASHED';this.failMsg='STRUCTURAL SHEAR FAILURE (28G)'}
+    if(q>180000){this.state='CRASHED';this.failMsg='AERODYNAMIC DISASSEMBLY'}
     
     this.telemT+=dt;
     if(this.telemT>=0.1){
@@ -1158,12 +1012,10 @@ class Vessel{
     ctx.save();
     ctx.translate(this.pos.x,this.pos.y);
     ctx.rotate(this.pitch);
-    // Dynamic scale so it's always visible but looks right close up
     let vs=Math.max(1, 1/(zoom*2.5)); 
-    if (vs > 500) vs = 500; // Cap visual scaling at extreme distances
+    if (vs > 800) vs = 800; 
     ctx.scale(vs,vs);
     
-    // Heat glow
     if(this.hullT>1000){
       let hr=M.clamp((this.hullT-1000)/3400,0,1);
       ctx.shadowBlur=120*hr;ctx.shadowColor=`rgba(255,${Math.floor(200-hr*200)},0,${hr})`;
@@ -1173,21 +1025,11 @@ class Vessel{
     }
     
     ctx.lineWidth=2;ctx.strokeStyle='#001833';
-    // Main Body
-    ctx.fillStyle='#A5ACAF';ctx.fillRect(-18,-16,36,50);ctx.strokeRect(-18,-16,36,50);
-    // Nose
-    ctx.fillStyle='#e0e0e0';ctx.beginPath();ctx.moveTo(0,-48);ctx.lineTo(18,-16);ctx.lineTo(-18,-16);ctx.closePath();ctx.fill();ctx.stroke();
-    // Cockpit Window
-    ctx.fillStyle='#00e5ff';ctx.beginPath();ctx.moveTo(0,-38);ctx.lineTo(8,-24);ctx.lineTo(-8,-24);ctx.closePath();ctx.fill();
-    // Decals
-    ctx.fillStyle='#69BE28';ctx.fillRect(-18,6,36,6);ctx.fillRect(-18,22,36,6);
-    // RCS Thruster Blocks
-    ctx.fillStyle='#2a2a2a';
-    ctx.fillRect(-22,-8,4,10);ctx.fillRect(18,-8,4,10);
-    ctx.fillRect(-22,24,4,10);ctx.fillRect(18,24,4,10);
-    // Engine Bell
+    ctx.fillStyle='#e0e0e0';ctx.fillRect(-18,-16,36,50);ctx.strokeRect(-18,-16,36,50);
+    ctx.fillStyle='#ffffff';ctx.beginPath();ctx.moveTo(0,-48);ctx.lineTo(18,-16);ctx.lineTo(-18,-16);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.fillStyle='#00aaff';ctx.beginPath();ctx.moveTo(0,-38);ctx.lineTo(8,-24);ctx.lineTo(-8,-24);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#000';ctx.fillRect(-18,6,36,6);ctx.fillRect(-18,22,36,6);
     ctx.fillStyle='#0d0d0d';ctx.beginPath();ctx.moveTo(-12,34);ctx.lineTo(12,34);ctx.lineTo(20,55);ctx.lineTo(-20,55);ctx.closePath();ctx.fill();ctx.stroke();
-    // Landing Gear (Retracted/Extended abstraction)
     ctx.strokeStyle='#777';ctx.lineWidth=5;ctx.lineCap='round';
     ctx.beginPath();ctx.moveTo(-18,28);ctx.lineTo(-42,58);ctx.lineTo(-30,62);ctx.stroke();
     ctx.beginPath();ctx.moveTo(18,28);ctx.lineTo(42,58);ctx.lineTo(30,62);ctx.stroke();
@@ -1195,9 +1037,6 @@ class Vessel{
   }
 }
 
-// ============================================================
-// DIRECTOR & GAME LOOP
-// ============================================================
 class Director{
   constructor(){
     this.C={
@@ -1208,7 +1047,7 @@ class Director{
       atmo:document.getElementById('c-atmo'),
       clouds:document.getElementById('c-clouds'),
       terrain:document.getElementById('c-terrain'),
-      traj:document.getElementById('c-traj'),
+      weather:document.getElementById('c-weather'),
       ship:document.getElementById('c-ship'),
       smoke:document.getElementById('c-smoke'),
       fx:document.getElementById('c-fx'),
@@ -1220,29 +1059,24 @@ class Director{
     this.resize();
     window.addEventListener('resize',()=>this.resize());
     
-    // Input state
     this.keys={};
     window.addEventListener('keydown',e=>{
         this.keys[e.code]=true;
         if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
-        if(e.code === 'Comma') this.adjustTimeWarp(-1);
-        if(e.code === 'Period') this.adjustTimeWarp(1);
     });
     window.addEventListener('keyup',e=>{this.keys[e.code]=false});
     
-    // Touch UI binds
     this.bindTouch('t-left', 'ArrowLeft');
     this.bindTouch('t-right', 'ArrowRight');
-    this.bindTouch('t-rcs-l', 'KeyJ');
-    this.bindTouch('t-rcs-r', 'KeyL');
-    this.bindTouch('t-main', 'Space', true);
+    this.bindTouch('t-main', 'ArrowUp', true);
 
     this.particles=new ParticleSystem();
+    this.weather=new WeatherSystem(window.innerWidth, window.innerHeight);
     this.vessel=new Vessel();
     this.audio = new SynthEngine();
     
     this.stars=[];
-    for(let i=0;i<6000;i++)this.stars.push({x:M.rng(-5000,5000),y:M.rng(-5000,5000),s:Math.random()*2.8,a:Math.random(),c:Math.random()>0.82?'#cceeff':'#ffffff'});
+    for(let i=0;i<8000;i++)this.stars.push({x:M.rng(-5000,5000),y:M.rng(-5000,5000),s:Math.random()*2.8,a:Math.random(),c:Math.random()>0.82?'#aaffff':'#ffffff'});
     this.nebulae=[];
     for(let i=0;i<12;i++)this.nebulae.push({x:M.rng(0,1),y:M.rng(0,1),r:M.rng(80,250),hue:Math.floor(M.rng(0,360)),a:M.rng(0.02,0.06)});
     
@@ -1253,10 +1087,6 @@ class Director{
     this.planetName='';
     this.planetData=null;
     this.renderer=null;
-    
-    this.timeWarp = 1;
-    this.warpRates = [1, 10, 100, 1000];
-    this.warpIdx = 0;
 
     this.buildUI();
     this.startIntro();
@@ -1264,6 +1094,7 @@ class Director{
   resize(){
     this.sw=window.innerWidth;this.sh=window.innerHeight;
     for(let k in this.C){this.C[k].width=this.sw;this.C[k].height=this.sh}
+    this.weather.sw = this.sw; this.weather.sh = this.sh;
   }
   bindTouch(id, code, isMain = false){
     const el = document.getElementById(id);
@@ -1282,50 +1113,29 @@ class Director{
     if(this.log.length>9)this.log.pop();
     document.getElementById('event-log').innerHTML=this.log.join('<br>');
   }
-  setTimeWarp(rate) {
-    if(this.vessel.state !== 'ORBIT') return; // Only warp in flight
-    this.timeWarp = rate;
-    this.warpIdx = this.warpRates.indexOf(rate);
-    document.querySelectorAll('.tw-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById('tw-' + rate).classList.add('active');
-    this.audio.playUIBeep();
-  }
-  adjustTimeWarp(dir) {
-      this.warpIdx = M.clamp(this.warpIdx + dir, 0, this.warpRates.length - 1);
-      this.setTimeWarp(this.warpRates[this.warpIdx]);
-  }
+  
   buildUI(){
     let car=document.getElementById('planet-carousel');
     for(let [name,pd] of Object.entries(PLANETS)){
       let div=document.createElement('div');
       div.className='planet-card';
       let cid='prev-'+name;
-      let hazHtml=pd.hazards.map((h,i)=>`<span class="hazard-tag" style="color:${pd.hazardColors[i]};border-color:${pd.hazardColors[i]}33;background:${pd.hazardColors[i]}11">${h}</span>`).join('');
+      let hazHtml=pd.hazards.map((h,i)=>`<span class="hazard-tag" style="color:${pd.hazardColors[i]};border-color:${pd.hazardColors[i]}33;background:${pd.hazardColors[i]}11; padding:3px 8px; font-size:clamp(0.6rem, 0.9vw, 0.75rem); font-weight:bold; letter-spacing:1px; border:1px solid; border-radius:4px; margin-right:5px; display:inline-block; margin-bottom:5px;">${h}</span>`).join('');
       div.innerHTML=`
         <div class="pc-globe" style="background:${pd.colorLand1};box-shadow:0 0 80px ${pd.colorAtmo||pd.colorLand1}"></div>
         <canvas class="pc-canvas-preview" id="${cid}" width="120" height="120"></canvas>
         <h2 class="pc-title">${name}</h2>
         <div class="pc-stats">
-          <div class="pc-stat"><span class="pc-stat-lbl">CLASSIFICATION</span><span class="pc-stat-val" style="color:#fff">${pd.classification}</span></div>
+          <div class="pc-stat"><span class="pc-stat-lbl">CLASS</span><span class="pc-stat-val" style="color:#fff">${pd.classification}</span></div>
           <div class="pc-stat"><span class="pc-stat-lbl">GRAVITY</span><span class="pc-stat-val">${pd.g.toFixed(2)} m/s²</span></div>
           <div class="pc-stat"><span class="pc-stat-lbl">ATMOSPHERE</span><span class="pc-stat-val">${pd.atmoP>0?(pd.atmoP/1000).toFixed(1)+' kPa':'VACUUM'}</span></div>
-          <div class="pc-stat"><span class="pc-stat-lbl">SURFACE TEMP</span><span class="pc-stat-val">${pd.surfT} K</span></div>
-          <div class="pc-stat"><span class="pc-stat-lbl">SAFE VELOCITY</span><span class="pc-stat-val">${pd.safeV} m/s</span></div>
+          <div class="pc-stat"><span class="pc-stat-lbl">SURF TEMP</span><span class="pc-stat-val">${pd.surfT} K</span></div>
         </div>
-        <div class="pc-hazards">${hazHtml}</div>
+        <div style="margin-top:10px;">${hazHtml}</div>
         <div class="pc-desc">${pd.description}</div>
-        <button class="btn" style="width:100%;margin-top:auto" onclick="window.director.startMission('${name}')">INITIATE LAUNCH SEQUENCE</button>
+        <button class="btn" style="margin-top:auto" onclick="window.director.startMission('${name}')">INITIATE LAUNCH</button>
       `;
       car.appendChild(div);
-    }
-    let ld=document.getElementById('pitch-ladder');
-    for(let d=90;d>=-90;d-=10){
-      if(d===0)continue;
-      let r=document.createElement('div');
-      r.className='ladder-rung'+(d<0?' neg':'');
-      r.setAttribute('data-p',Math.abs(d));
-      r.style.top=`calc(50% - ${d*14}px)`;
-      ld.appendChild(r);
     }
     document.getElementById('btn-return').addEventListener('click',()=>location.reload());
   }
@@ -1340,35 +1150,7 @@ class Director{
     let phaseT=0;
     let planetShowDur=0.38;
     let titleStartT=0;
-    let titleDone=false;
-    let bootLines=[
-      ["KERNEL BOOT v15.0.0 ULTRA","ok"],
-      ["ALLOCATING 512TB HEAP MEMORY","ok"],
-      ["MOUNTING SIMPLEX NOISE ENGINE","ok"],
-      ["RUNGE-KUTTA N-BODY INTEGRATOR","ok"],
-      ["AERODYNAMIC SHEAR MODEL","ok"],
-      ["THERMAL ABLATION CALC","ok"],
-      ["PLANETARY DATABASE: 6 BODIES","ok"],
-      ["AUDIO SYNTHESIS ENGINE","ok"],
-      ["TRAJECTORY PREDICTION MAP","ok"],
-      ["LOD SYSTEM CALIBRATED","ok"],
-      ["DEEP SPACE UPLINK","ok"],
-      ["BIOMETRIC SCAN: JAAP","GRANTED"]
-    ];
-    let bootIdx=0;
-    let leftEl=document.getElementById('intro-boot-left');
-    let rightEl=document.getElementById('intro-boot-right');
-    let bootInterval=setInterval(()=>{
-      if(bootIdx>=bootLines.length){clearInterval(bootInterval);return}
-      let [txt,status]=bootLines[bootIdx];
-      let isOk=status==='ok';
-      let line=document.createElement('div');
-      line.className='boot-line';
-      let t=new Date().toISOString().substring(11,23);
-      line.innerHTML=`<span class="boot-time">[${t}]</span> ${txt} <span class="${isOk?'boot-ok':'boot-warn'}">[${status.toUpperCase()}]</span>`;
-      if(bootIdx%2===0)leftEl.appendChild(line);else rightEl.appendChild(line);
-      bootIdx++;
-    },220);
+    let titleShown=false;
 
     let introRenderers={};
     for(let n of pnames){
@@ -1381,12 +1163,9 @@ class Director{
         if(c&&introRenderers[n])introRenderers[n].renderCardPreview(c);
       }
     },500);
-    let introStars=[];
-    for(let i=0;i<3000;i++)introStars.push({x:Math.random()*this.sw,y:Math.random()*this.sh,s:Math.random()*2.5,a:Math.random()});
 
     let lastIT=performance.now();
     let totalT=0;
-    let titleShown=false;
 
     let animateIntro=(now)=>{
       if(this.appState!=='INTRO')return;
@@ -1394,11 +1173,6 @@ class Director{
       totalT+=dt;phaseT+=dt;
       ctx.clearRect(0,0,this.sw,this.sh);
       ctx.fillStyle='#000';ctx.fillRect(0,0,this.sw,this.sh);
-      
-      for(let s of introStars){
-        ctx.fillStyle=`rgba(255,255,255,${s.a})`;
-        ctx.fillRect(s.x,s.y,s.s,s.s);
-      }
       
       if(phase==='planet-show'){
         let pn=pnames[pidx];
@@ -1413,24 +1187,13 @@ class Director{
         let lbl=document.getElementById('intro-planet-label');
         lbl.textContent=pn.toUpperCase();
         lbl.style.opacity=fade*0.9;
-        lbl.style.color=pd.colorAtmo||'#ffffff';
-        lbl.style.textShadow=`0 0 40px ${pd.colorAtmo||'#fff'},0 0 80px ${pd.colorAtmoGlow||'#fff'}`;
         
-        let sp=document.getElementById('intro-stats-panel');
-        sp.style.opacity=fade*0.85;
-        sp.innerHTML=`
-          <div class="istat-row"><span class="istat-lbl">CLASS</span><span class="istat-val">${pd.classification}</span></div>
-          <div class="istat-row"><span class="istat-lbl">GRAVITY</span><span class="istat-val">${pd.g.toFixed(2)} m/s²</span></div>
-          <div class="istat-row"><span class="istat-lbl">ATMO</span><span class="istat-val">${pd.atmoP>0?(pd.atmoP/1000).toFixed(1)+' kPa':'VACUUM'}</span></div>
-          <div class="istat-row"><span class="istat-lbl">TEMP</span><span class="istat-val">${pd.surfT} K</span></div>
-        `;
         if(phaseT>=planetShowDur){phaseT=0;pidx=(pidx+1)%pnames.length;if(pidx===0)phase='title'}
       }
       
       if(phase==='title'&&!titleShown){
         titleShown=true;titleStartT=totalT;
         document.getElementById('intro-planet-label').style.opacity=0;
-        document.getElementById('intro-stats-panel').style.opacity=0;
         
         let title=document.getElementById('intro-title-main');
         let sub=document.getElementById('intro-subtitle');
@@ -1440,24 +1203,24 @@ class Director{
         
         setTimeout(()=>{
           sub.style.transition='opacity 1s ease';sub.style.opacity='0.7';
-          this.audio.init(); // Initialize audio on first real interaction/wait
+          this.audio.init(); 
         },1200);
         
         setTimeout(()=>{
           document.getElementById('intro-loader-wrap').style.display='block';
           let fill=document.getElementById('intro-loader-fill');
           let ltxt=document.getElementById('intro-loader-text');
-          let stages=['ESTABLISHING UPLINK...','GENERATING PROCEDURAL MESH...','CALIBRATING PHYSICS ENGINE...','LOADING AUDIO SYNTH...','SYSTEMS READY'];
+          let stages=['ESTABLISHING UPLINK...','GENERATING MESH...','CALIBRATING ENGINE...','SYSTEMS READY'];
           let prog=0;
           let li=setInterval(()=>{
-            prog+=1.8;
+            prog+=2.5;
             fill.style.width=Math.min(100,prog)+'%';
-            ltxt.textContent=stages[Math.floor(prog/20)]||stages[4];
+            ltxt.textContent=stages[Math.floor(prog/25)]||stages[3];
             if(prog>=100){
               clearInterval(li);
-              setTimeout(()=>{this.changeState('MENU');requestAnimationFrame(t=>this.loop(t))},700);
+              setTimeout(()=>{this.changeState('MENU');requestAnimationFrame(t=>this.loop(t))},500);
             }
-          },35);
+          },30);
         },2000);
       }
       if(phase==='title'){
@@ -1469,8 +1232,6 @@ class Director{
       }
       requestAnimationFrame(animateIntro);
     };
-    let t=document.getElementById('intro-title-main');
-    t.style.opacity='0';t.style.filter='blur(20px)';t.style.letterSpacing='80px';t.style.transform='scale(0.6)';
     requestAnimationFrame(animateIntro);
   }
 
@@ -1487,7 +1248,6 @@ class Director{
     }else if(s==='END'){
       document.getElementById('end-screen').classList.add('active');
       this.fillDebrief();
-      this.setTimeWarp(1); // Reset warp
     }
   }
 
@@ -1507,23 +1267,22 @@ class Director{
     
     this.cam.x=this.vessel.pos.x;
     this.cam.y=this.vessel.pos.y;
-    // Initial zoom very very far away
-    this.cam.zoom=0.0000001; 
-    this.cam.tZoom=0.0000001;
+    
+    // Start very zoomed out so planet is visible
+    let initialZoom = this.sh / (this.planetData.radius * 6);
+    this.cam.zoom=initialZoom; 
+    this.cam.tZoom=initialZoom;
     
     document.getElementById('ui-body').textContent=name;
-    this.setTimeWarp(1);
     this.changeState('FLIGHT');
   }
 
   processInput(){
     if(this.appState!=='FLIGHT')return;
     let v=this.vessel;
-    v.ctrl.main=this.keys['Space']||this.keys['KeyW']||this.keys['ArrowUp'];
-    v.ctrl.rcsL=this.keys['KeyJ'];
-    v.ctrl.rcsR=this.keys['KeyL'];
-    v.ctrl.pUp=this.keys['KeyA']||this.keys['ArrowLeft'];
-    v.ctrl.pDown=this.keys['KeyD']||this.keys['ArrowRight'];
+    v.ctrl.main=this.keys['ArrowUp'] || this.keys['Space'] || this.keys['KeyW'];
+    v.ctrl.pUp=this.keys['ArrowLeft'] || this.keys['KeyA'];
+    v.ctrl.pDown=this.keys['ArrowRight'] || this.keys['KeyD'];
 
     if(v.ctrl.main && v.massLFO > 0 && v.state === 'ORBIT') {
        this.audio.setEngineThrust(1.0);
@@ -1532,125 +1291,50 @@ class Director{
     }
   }
 
-  // Predict and draw trajectory
-  drawTrajectory(ctx, sw, sh, zoom) {
-     if(this.vessel.state !== 'ORBIT') return;
-     ctx.clearRect(0, 0, sw, sh);
-     
-     // Only draw trajectory if we are far enough away (space view)
-     let alt = Math.max(0, -this.vessel.pos.y - this.planetData.radius);
-     if (alt < LOD_ALT * 0.5) return;
-
-     let m = this.vessel.mass();
-     let pd = this.planetData;
-     let pPos = this.vessel.pos.clone();
-     let pVel = this.vessel.vel.clone();
-     let steps = 400;
-     let dt = 50; // Physics steps for prediction
-     
-     ctx.save();
-     ctx.translate(sw/2, sh/2);
-     ctx.scale(zoom, zoom);
-     ctx.translate(-this.cam.x, -this.cam.y);
-     
-     ctx.beginPath();
-     ctx.moveTo(pPos.x, pPos.y);
-     ctx.strokeStyle = 'rgba(105, 190, 40, 0.4)';
-     ctx.lineWidth = 2 / zoom; // Keep line width constant visually
-     ctx.setLineDash([10/zoom, 10/zoom]);
-
-     for(let i=0; i<steps; i++) {
-        let distSq = pPos.x*pPos.x + (pPos.y + pd.radius)*(pPos.y + pd.radius);
-        let dist = Math.sqrt(distSq);
-        
-        // Stop drawing if we hit the ground
-        if (dist <= pd.radius) {
-           ctx.fillStyle = 'red';
-           ctx.arc(pPos.x, pPos.y, 5/zoom, 0, TAU);
-           ctx.fill();
-           break;
-        }
-
-        let fG = (G_CONST * pd.mass) / distSq;
-        let accX = ((0 - pPos.x) / dist) * fG;
-        let accY = ((-pd.radius - pPos.y) / dist) * fG;
-        
-        pVel.x += accX * dt;
-        pVel.y += accY * dt;
-        pPos.x += pVel.x * dt;
-        pPos.y += pVel.y * dt;
-        
-        ctx.lineTo(pPos.x, pPos.y);
-     }
-     ctx.stroke();
-     ctx.restore();
-  }
-
   updateLogic(realDt){
     if(this.appState!=='FLIGHT')return;
     
-    // Time Warp Logic: execute physics multiple times
-    let steps = this.timeWarp;
-    let dt = MAX_DT; // Fixed physics step
-    let ps = {q:0, g:1, mach:0, rho:0};
-
-    let alt = 0;
-    let surfH = 0;
-    let radAlt = 0;
-
-    for(let i=0; i<steps; i++) {
-        surfH = this.renderer.getH(this.vessel.pos.x);
-        alt = Math.max(0, -this.vessel.pos.y - this.planetData.radius);
-        radAlt = alt - surfH;
+    let dt = MAX_DT; 
+    let surfH = this.renderer.getH(this.vessel.pos.x);
+    let alt = Math.max(0, -this.vessel.pos.y - this.planetData.radius);
+    let radAlt = alt - surfH;
         
-        // Force drop out of time warp if close to ground or in atmosphere
-        if(this.timeWarp > 1 && (radAlt < 200000 || alt < this.planetData.scaleH * 10)) {
-            this.setTimeWarp(1);
-            this.pushLog("⚠ TIME WARP ABORTED: PROXIMITY ALERT");
-            this.audio.playAlarm('warning');
-            steps = 1;
-        }
+    let ps = this.vessel.update(dt, this.planetData, radAlt);
 
-        ps = this.vessel.update(dt, this.planetData, radAlt);
-
-        // Landing / crash checks inside the step loop to prevent tunneling
-        if(radAlt<=45 && this.vessel.state==='ORBIT'){
-          this.vessel.pos.y = -surfH - 45 - this.planetData.radius;
-          let vv=Math.abs(this.vessel.vel.y),hv=Math.abs(this.vessel.vel.x);
-          let pd2=Math.abs(this.vessel.pitch*R2D);
-          if(pd2>180)pd2=360-pd2;
-          
-          let padWx=-SURF_SPAN/2+(this.renderer.padIdx/this.renderer.RES)*SURF_SPAN;
-          let padWw=(this.renderer.padW*2/this.renderer.RES)*SURF_SPAN;
-          let onPad=this.vessel.pos.x>padWx-padWw/2&&this.vessel.pos.x<padWx+padWw/2;
-          
-          let crash=vv>this.planetData.safeV||hv>6.5||pd2>16||(!onPad&&pd2>9);
-          
-          if(crash){
-            this.vessel.state='CRASHED';
-            this.particles.emit(this.vessel.pos.x,this.vessel.pos.y,0,0,'explosion');
-            this.particles.emit(this.vessel.pos.x,this.vessel.pos.y,0,0,'debris');
-            this.vessel.vel.set(0,0,0);
-            this.audio.playExplosion();
-            if(vv>this.planetData.safeV)this.vessel.failMsg=`STRUCTURAL COLLAPSE: VERTICAL IMPACT ${vv.toFixed(1)} m/s`;
-            else if(hv>6.5)this.vessel.failMsg=`GEAR SHEAR: LATERAL SLIP ${hv.toFixed(1)} m/s`;
-            else this.vessel.failMsg=`CRITICAL ROLLOVER: PITCH ${pd2.toFixed(1)}°`;
-            this.pushLog('⚠ CRITICAL KINETIC IMPACT DETECTED');
-            setTimeout(()=>this.changeState('END'),4500);
-          }else{
-            this.vessel.state='LANDED';
-            this.vessel.vel.set(0,0,0);
-            this.vessel.pitch=0;
-            this.particles.emit(this.vessel.pos.x,this.vessel.pos.y,0,0,'smoke');
-            this.audio.playUIBeep();
-            this.pushLog('✓ TOUCHDOWN CONFIRMED');
-            setTimeout(()=>this.changeState('END'),4500);
-          }
-          break; // Stop physics loop if landed/crashed
-        }
+    if(radAlt<=45 && this.vessel.state==='ORBIT'){
+      this.vessel.pos.y = -surfH - 45 - this.planetData.radius;
+      let vv=Math.abs(this.vessel.vel.y),hv=Math.abs(this.vessel.vel.x);
+      let pd2=Math.abs(this.vessel.pitch*R2D);
+      if(pd2>180)pd2=360-pd2;
+      
+      let padWx=-SURF_SPAN/2+(this.renderer.padIdx/this.renderer.RES)*SURF_SPAN;
+      let padWw=(this.renderer.padW*2/this.renderer.RES)*SURF_SPAN;
+      let onPad=this.vessel.pos.x>padWx-padWw/2&&this.vessel.pos.x<padWx+padWw/2;
+      
+      let crash=vv>this.planetData.safeV||hv>6.5||pd2>16||(!onPad&&pd2>9);
+      
+      if(crash){
+        this.vessel.state='CRASHED';
+        this.particles.emit(this.vessel.pos.x,this.vessel.pos.y,0,0,'explosion');
+        this.particles.emit(this.vessel.pos.x,this.vessel.pos.y,0,0,'debris');
+        this.vessel.vel.set(0,0,0);
+        this.audio.playExplosion();
+        if(vv>this.planetData.safeV)this.vessel.failMsg=`STRUCTURAL COLLAPSE: VERTICAL IMPACT ${vv.toFixed(1)} m/s`;
+        else if(hv>6.5)this.vessel.failMsg=`GEAR SHEAR: LATERAL SLIP ${hv.toFixed(1)} m/s`;
+        else this.vessel.failMsg=`CRITICAL ROLLOVER: PITCH ${pd2.toFixed(1)}°`;
+        this.pushLog('⚠ CRITICAL KINETIC IMPACT DETECTED');
+        setTimeout(()=>this.changeState('END'),4500);
+      }else{
+        this.vessel.state='LANDED';
+        this.vessel.vel.set(0,0,0);
+        this.vessel.pitch=0;
+        this.particles.emit(this.vessel.pos.x,this.vessel.pos.y,0,0,'smoke');
+        this.audio.playUIBeep();
+        this.pushLog('✓ TOUCHDOWN CONFIRMED');
+        setTimeout(()=>this.changeState('END'),4500);
+      }
     }
 
-    // Visuals & FX only happen once per render frame
     if(this.vessel.ctrl.main&&this.vessel.massLFO>0&&this.vessel.state==='ORBIT'){
       let ex=this.vessel.pos.x-Math.sin(this.vessel.pitch)*52;
       let ey=this.vessel.pos.y+Math.cos(this.vessel.pitch)*52;
@@ -1660,18 +1344,6 @@ class Director{
       document.getElementById('lensflare').style.opacity=1;
     }else document.getElementById('lensflare').style.opacity=0;
 
-    // RCS FX
-    if(this.vessel.massMono>0&&this.vessel.state==='ORBIT'){
-      let ca=Math.cos(this.vessel.pitch),sa=Math.sin(this.vessel.pitch);
-      let gO=(ox,oy)=>({x:this.vessel.pos.x+ox*ca-oy*sa,y:this.vessel.pos.y+ox*sa+oy*ca});
-      let ev=550;
-      if(this.vessel.ctrl.pUp){let p=gO(25,-22);this.particles.emit(p.x,p.y,this.vessel.vel.x+sa*ev,this.vessel.vel.y-ca*ev,'rcs')}
-      if(this.vessel.ctrl.pDown){let p=gO(-25,-22);this.particles.emit(p.x,p.y,this.vessel.vel.x-sa*ev,this.vessel.vel.y+ca*ev,'rcs')}
-      if(this.vessel.ctrl.rcsL){let p=gO(0,0);this.particles.emit(p.x,p.y,this.vessel.vel.x+ca*ev,this.vessel.vel.y+sa*ev,'rcs')}
-      if(this.vessel.ctrl.rcsR){let p=gO(0,0);this.particles.emit(p.x,p.y,this.vessel.vel.x-ca*ev,this.vessel.vel.y-sa*ev,'rcs')}
-    }
-
-    // Plasma reentry
     if(ps.q>2500&&this.vessel.hullT>1000&&this.vessel.state==='ORBIT'){
       this.particles.emit(this.vessel.pos.x,this.vessel.pos.y,this.vessel.vel.x*0.28,this.vessel.vel.y*0.28,'plasma');
       let sh=Math.min(50,ps.q/600);
@@ -1679,36 +1351,24 @@ class Director{
       this.cam.y+=M.rng(-sh,sh);
     }
     
-    // Warp speed stars
-    if(this.timeWarp > 10 && this.vessel.vel.mag() > 1000) {
-        let wv = this.vessel.vel.clone().norm().mul(-8000);
-        this.particles.emit(this.vessel.pos.x + M.rng(-50000, 50000)/this.cam.zoom, this.vessel.pos.y + M.rng(-50000, 50000)/this.cam.zoom, wv.x, wv.y, 'warp');
-    }
-
-    this.particles.update(realDt); // Particles run on real time
+    this.particles.update(realDt); 
 
     if(this.vessel.state==='CRASHED'&&Math.random()<0.18)
       this.particles.emit(this.vessel.pos.x,this.vessel.pos.y,0,-120,'smoke');
 
-    // Smooth Camera Zoom interpolation based on altitude
-    if(alt > LOD_ALT * 2) {
-       // Far away space view
-       // We want the planet and ship to both be visible initially if possible, or just focus on ship.
-       // A logarithmic scale for zoom based on altitude
-       this.cam.tZoom = Math.max(0.000005, this.sh / (alt * 4.5));
+    // Super smooth scale from outer space to surface
+    if(alt > LOD_ALT * 3) {
+       this.cam.tZoom = this.sh / (alt * 4.0);
     } else if (alt > LOD_ALT) {
-       // Approaching
-       let hr = 1 - ((alt - LOD_ALT) / LOD_ALT);
-       this.cam.tZoom = M.lerp(this.sh / (LOD_ALT * 4.5), 0.00022, hr);
+       let hr = 1 - ((alt - LOD_ALT) / (LOD_ALT * 2));
+       this.cam.tZoom = M.lerp(this.sh / (LOD_ALT * 4.0 * 4.0), 0.00025, hr);
     } else {
-       // Surface view
        let hr = 1 - (alt / LOD_ALT);
-       this.cam.tZoom = M.lerp(0.00022, 1.85, Math.pow(hr, 0.45));
+       this.cam.tZoom = M.lerp(0.00025, 1.85, Math.pow(hr, 0.45));
     }
     
     this.cam.zoom = M.lerp(this.cam.zoom, this.cam.tZoom, realDt * 1.5);
     
-    // Camera Position Follows Ship
     let lx=this.vessel.vel.x*0.5, ly=this.vessel.vel.y*0.5;
     this.cam.x=M.lerp(this.cam.x, this.vessel.pos.x+lx, realDt*4.0);
     this.cam.y=M.lerp(this.cam.y, this.vessel.pos.y+ly, realDt*4.0);
@@ -1731,13 +1391,11 @@ class Director{
     if(soe>0){
       document.getElementById('ui-apo').textContent='ESCAPE TRAJ';
       document.getElementById('ui-peri').textContent=((sma*0.4-pd.radius)/1000).toFixed(1)+' km';
-      document.getElementById('ui-ecc').textContent='>1.000';
     }else{
       let apo=(sma*1.6-pd.radius)/1000;
       let per=(sma*0.4-pd.radius)/1000;
       document.getElementById('ui-apo').textContent=Math.max(0,apo).toFixed(1)+' km';
       document.getElementById('ui-peri').textContent=Math.max(0,per).toFixed(1)+' km';
-      document.getElementById('ui-ecc').textContent=Math.abs((apo-per)/(apo+per)).toFixed(3);
     }
     
     document.getElementById('ui-radar').textContent=Math.max(0,radarAlt).toFixed(0)+' m';
@@ -1747,13 +1405,10 @@ class Director{
     document.getElementById('ui-grav').textContent=lg.toFixed(3)+' m/s²';
     document.getElementById('ui-rho').textContent=ps.rho.toFixed(4)+' kg/m³';
     document.getElementById('ui-q').textContent=(ps.q/1000).toFixed(2)+' kPa';
-    document.getElementById('ui-mach').textContent=ps.mach.toFixed(2);
     
-    let fp=(v.massLFO/v.massLFO_max)*100,rp=(v.massMono/v.massMono_max)*100,tp=(v.hullT/4400)*100;
+    let fp=(v.massLFO/v.massLFO_max)*100,tp=(v.hullT/4400)*100;
     document.getElementById('ui-fuel').textContent=fp.toFixed(1)+'%';
     document.getElementById('bar-fuel').style.width=fp+'%';
-    document.getElementById('ui-rcs').textContent=rp.toFixed(1)+'%';
-    document.getElementById('bar-rcs').style.width=rp+'%';
     document.getElementById('ui-mass').textContent=Math.floor(v.mass())+' kg';
     document.getElementById('ui-temp').textContent=v.hullT.toFixed(0)+' K';
     document.getElementById('bar-temp').style.width=Math.min(100,tp)+'%';
@@ -1764,23 +1419,10 @@ class Director{
     else{te.textContent='0 kN';te.style.color=v.massLFO<=0?'var(--c-crit)':'var(--c-primary)'}
     
     document.getElementById('ui-gforce').textContent=ps.g.toFixed(2)+' G';
-    document.getElementById('ui-maxg').textContent=v.maxG.toFixed(2)+' G';
     document.getElementById('ui-state').textContent=v.state;
     
-    // Pitch Ladder (Only show when relatively close to surface)
-    let pd2=v.pitch*R2D;
-    let plad = document.getElementById('pitch-ladder');
-    if (alt < LOD_ALT) {
-       plad.style.display = 'block';
-       let ly2=pd2*14;
-       plad.style.transform=`translate(-50%,-50%) translateY(${ly2}px) rotate(${-pd2}deg)`;
-    } else {
-       plad.style.display = 'none';
-    }
-
-    // Alarms
     let at = document.getElementById('alarm-terrain');
-    if (radarAlt<25000 && v.vel.y>500 && this.timeWarp === 1) {
+    if (radarAlt<25000 && v.vel.y>500) {
         at.style.display = 'block';
         if(Math.random()<0.05) this.audio.playAlarm('warning');
     } else at.style.display = 'none';
@@ -1791,14 +1433,6 @@ class Director{
     document.getElementById('alarm-maxq').style.display=(ps.q>150000)?'block':'none';
     document.getElementById('alarm-fuel').style.display=(fp<5&&fp>0)?'block':'none';
     document.getElementById('alarm-speed').style.display=(v.vel.y>600&&radarAlt<50000)?'block':'none';
-
-    // Target lock indicator
-    let tl=document.getElementById('tgt-lock');
-    if(alt>LOD_ALT*0.5){
-      tl.style.display='block';tl.setAttribute('data-n',this.planetName);
-      tl.setAttribute('data-d',(alt/1000).toFixed(0)+' km');
-      tl.style.left='50%';tl.style.top='50%';
-    }else tl.style.display='none';
 
     this.drawGraph('graph-vel',t=>t.v,'#00ffff');
     this.drawGraph('graph-q',t=>t.q,'#ffaa00');
@@ -1847,7 +1481,7 @@ class Director{
       if(vv<1.5&&hv<0.25&&rf>20000){rt.textContent='GRADE S — FLAWLESS EXECUTION';rt.style.color='#ffd700';rt.style.borderColor='#ffd700'}
       else if(vv<4&&hv<2){rt.textContent='GRADE A — EXCELLENT PILOTING';rt.style.color='var(--c-primary)';rt.style.borderColor='var(--c-primary)'}
       else{rt.textContent='GRADE B — NOMINAL LANDING';rt.style.color='#ffffff';rt.style.borderColor='#ffffff'}
-      ce.textContent='POST-FLIGHT DIAGNOSTICS COMPLETE. CREW AWAITING EXTRACTION.';ce.style.color='#aaaaaa';
+      ce.textContent='POST-FLIGHT DIAGNOSTICS COMPLETE. CREW SECURE.';ce.style.color='#aaaaaa';
     }
   }
 
@@ -1876,15 +1510,14 @@ class Director{
     
     if(this.appState==='FLIGHT'&&this.renderer){
       let alt=Math.max(0,-this.vessel.pos.y - this.planetData.radius);
-      
-      this.drawTrajectory(X.traj, sw, sh, this.cam.zoom);
 
       if(alt>LOD_ALT){
-        // Render sphere from far away
         this.renderer.renderSphere(X.planet,alt,this.cam.zoom,sw,sh, this.cam.x - this.vessel.pos.x, this.cam.y - this.vessel.pos.y);
       }else{
-        // Render terrain
         this.renderer.renderSurface(alt,this.cam.x,this.cam.y,this.cam.zoom);
+        if(this.planetData.weatherType !== 'none' && alt < 50000) {
+           this.weather.render(X.weather, this.planetData.weatherType, 0.016);
+        }
       }
       
       if(this.vessel.state!=='CRASHED'){
@@ -1895,7 +1528,7 @@ class Director{
         this.vessel.draw(X.ship,this.cam.zoom);
         X.ship.restore();
       }
-      this.particles.render(X.fx,X.smoke,this.cam.x,this.cam.y,this.cam.zoom,sw,sh, this.timeWarp);
+      this.particles.render(X.fx,X.smoke,this.cam.x,this.cam.y,this.cam.zoom,sw,sh);
     }
   }
 
