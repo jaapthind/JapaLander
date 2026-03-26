@@ -1219,7 +1219,7 @@ class Vessel{
       let startRadius = safePd ? safePd.radius * 15 : 15000000;
      this.pos=new V3(0, -safePd.radius - startRadius, 0); 
     // Increased approach velocity to bring planet closer faster
-    this.vel=new V3(0, 1500, 0); 
+    this.vel=new V3(400, 800, 0);
     this.acc=new V3(0,0,0);
     this.pitch= 0; 
     
@@ -1227,7 +1227,7 @@ class Vessel{
     this.massDry=22500;
     this.massLFO=120000;this.massLFO_max=120000; 
     this.massMono=5000;this.massMono_max=5000;
-      this.thrust=18000000;
+      this.thrust=25000000;
      this.ispMain=360;
     this.burnMain=this.thrust/(this.ispMain*9.81);
     this.area=42.5;this.cd=0.95;
