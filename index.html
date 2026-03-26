@@ -632,7 +632,6 @@ class PlanetRenderer{
     this.pd=pd;this.ctxT=ctxT;this.ctxP=ctxP;this.ctxA=ctxA;this.ctxC=ctxC;
     this.sw=sw;this.sh=sh;
     let hash=0;for(let c of pd.classification)hash+=c.charCodeAt(0);
-// Add a fallback || {} to prevent the "radius of undefined" crash
     const data = pd || { radius: 0, classification: "" }; 
     this.noise = new SimplexNoise(hash * 137 + (data.radius || 0) * 0.001);  
     this.RES = 8192;
@@ -1059,7 +1058,6 @@ class Director{
     for(let k in this.C)this.X[k]=this.C[k].getContext('2d',{alpha:true});
     this.sw=0;this.sh=0;
 
-    // Fix: Instantiate WeatherSystem BEFORE resize is called so this.weather is never undefined
     this.weather=new WeatherSystem(window.innerWidth || 1000, window.innerHeight || 1000);
 
     this.resize();
@@ -1099,7 +1097,6 @@ class Director{
   resize(){
     this.sw=window.innerWidth;this.sh=window.innerHeight;
     for(let k in this.C){this.C[k].width=this.sw;this.C[k].height=this.sh}
-    // Safely update weather dimensions
     if (this.weather) {
       this.weather.sw = this.sw; 
       this.weather.sh = this.sh;
@@ -1179,7 +1176,7 @@ class Director{
     let animateIntro=(now)=>{
       if(this.appState!=='INTRO')return;
       let dt=(now-lastIT)/1000;
-      if (isNaN(dt) || dt <= 0 || dt > 0.1) dt = 0.016; // Prevent NaN freeze
+      if (isNaN(dt) || dt <= 0 || dt > 0.1) dt = 0.016; 
       lastIT=now;
       totalT+=dt;phaseT+=dt;
       
@@ -1545,9 +1542,9 @@ class Director{
   }
 
   loop(ts){
-    // This line is the fix: it prevents dt from being 0 or NaN
+    if (!this.lastT) this.lastT = ts;
     let dt = (ts - this.lastT) / 1000;
-    if (isNaN(dt) || dt <= 0) dt = 0.016; 
+    if (isNaN(dt) || dt <= 0 || dt > 0.1) dt = 0.016; 
     
     this.lastT = ts;
     this.processInput();
@@ -1555,12 +1552,6 @@ class Director{
     this.renderAll();
     requestAnimationFrame(t => this.loop(t));
   }
-    this.lastT=ts;
-    this.processInput();
-    this.updateLogic(dt);
-    this.renderAll();
-    requestAnimationFrame(t=>this.loop(t));
-  
 }
 
 window.onload=()=>{window.director=new Director()};
