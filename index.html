@@ -6,7 +6,7 @@
 <title>JAAP SPACE v16.0.0-ULTRA-DIRECT</title>
 <style>
 :root {
-  --c-primary: #00aaff; /* Changed from green to a clean blue */
+  --c-primary: #00aaff;
   --c-secondary: #002244;
   --c-tertiary: #A5ACAF;
   --c-bg: #000105;
@@ -1056,6 +1056,10 @@ class Director{
     this.X={};
     for(let k in this.C)this.X[k]=this.C[k].getContext('2d',{alpha:true});
     this.sw=0;this.sh=0;
+
+    // Fix: Instantiate WeatherSystem BEFORE resize is called so this.weather is never undefined
+    this.weather=new WeatherSystem(window.innerWidth || 1000, window.innerHeight || 1000);
+
     this.resize();
     window.addEventListener('resize',()=>this.resize());
     
@@ -1071,7 +1075,6 @@ class Director{
     this.bindTouch('t-main', 'ArrowUp', true);
 
     this.particles=new ParticleSystem();
-    this.weather=new WeatherSystem(window.innerWidth, window.innerHeight);
     this.vessel=new Vessel();
     this.audio = new SynthEngine();
     
@@ -1094,15 +1097,19 @@ class Director{
   resize(){
     this.sw=window.innerWidth;this.sh=window.innerHeight;
     for(let k in this.C){this.C[k].width=this.sw;this.C[k].height=this.sh}
-    this.weather.sw = this.sw; this.weather.sh = this.sh;
+    // Safely update weather dimensions
+    if (this.weather) {
+      this.weather.sw = this.sw; 
+      this.weather.sh = this.sh;
+    }
   }
   bindTouch(id, code, isMain = false){
     const el = document.getElementById(id);
     if(!el) return;
     const start = (e) => { e.preventDefault(); this.keys[code] = true; el.classList.add('sim-active'); if(isMain) document.getElementById('t-main').classList.add('flame-active'); };
     const end = (e) => { e.preventDefault(); this.keys[code] = false; el.classList.remove('sim-active'); if(isMain) document.getElementById('t-main').classList.remove('flame-active');};
-    el.addEventListener('touchstart', start);
-    el.addEventListener('touchend', end);
+    el.addEventListener('touchstart', start, {passive: false});
+    el.addEventListener('touchend', end, {passive: false});
     el.addEventListener('mousedown', start);
     el.addEventListener('mouseup', end);
     el.addEventListener('mouseleave', end);
@@ -1169,8 +1176,11 @@ class Director{
 
     let animateIntro=(now)=>{
       if(this.appState!=='INTRO')return;
-      let dt=Math.min((now-lastIT)/1000,0.05);lastIT=now;
+      let dt=(now-lastIT)/1000;
+      if (isNaN(dt) || dt <= 0 || dt > 0.1) dt = 0.016; // Prevent NaN freeze
+      lastIT=now;
       totalT+=dt;phaseT+=dt;
+      
       ctx.clearRect(0,0,this.sw,this.sh);
       ctx.fillStyle='#000';ctx.fillRect(0,0,this.sw,this.sh);
       
@@ -1533,7 +1543,8 @@ class Director{
   }
 
   loop(ts){
-    let dt=Math.min((ts-this.lastT)/1000,MAX_DT);
+    let dt=(ts-this.lastT)/1000;
+    if (isNaN(dt) || dt <= 0 || dt > 0.1) dt = 0.016; // Prevent NaN poisoning
     this.lastT=ts;
     this.processInput();
     this.updateLogic(dt);
